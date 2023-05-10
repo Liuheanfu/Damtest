@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta charset='utf-8'/>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>加载WMS图层</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer, options, layer;
+
+      //地图初始化函数
+      function init() {
+          //初始化球体
+          initViewer();
+          //加载WMS图层
+          addWMSLayer();
+          //飞到指定视角
+          flyTo();
+      }
+
+      //初始化球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer("mapgis-3d-viewer", {});
+          viewer.showPosition();
+      }
+
+      //加载WMS图层
+      function addWMSLayer() {
+          options = {
+              url: "http://219.142.81.85/arcgis/services/10wanZH/MapServer/WMSServer",
+              layers: "0,1,2,3,5,7,9,11",
+              parameters: {
+                  format: "image/png",
+                  transparent: true
+              }
+          };
+          //加载WMS地图
+          layer = viewer.scene.imageryLayers.addImageryProvider(new Cesium.WebMapServiceImageryProvider(options));
+      }
+
+      //飞到指定视角
+      function flyTo() {
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(108.22732,36.1407,4000000),
+              duration: 2
+          });
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+</body>
+
+</html>

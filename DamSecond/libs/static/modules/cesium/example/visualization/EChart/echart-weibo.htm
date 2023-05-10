@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>散点图-微博签到</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--引入echarts-->
+  <script type="text/javascript" src="http://localhost:8080/static/libs/cdn/overlay/echarts/echarts.min.js"></script>
+  <!--配合echarts引入文件-->
+  <script src="http://localhost:8080/static/libs/cdn/overlay/EchartsLayer.js" type="module"></script>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer = null;
+      //echarts实例
+      let layer = null;
+
+      //初始化
+      function init() {
+          //地图初始化
+          initMap();
+          //echarts
+          initEcharts();
+      }
+
+      //地图初始化
+      function initMap() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          // 蓝色背景
+          let blueImage = new Cesium.UrlTemplateImageryProvider({
+              url:
+                  "https://map.geoq.cn/arcgis/rest/services/ChinaOnlineStreetPurplishBlue/MapServer/tile/{z}/{y}/{x}",
+              tilingScheme: new Cesium.WebMercatorTilingScheme(),
+              maximumLevel: 8,
+          });
+          viewer.imageryLayers.addImageryProvider(blueImage);
+      }
+
+      //echarts
+      function initEcharts() {
+          // options参数请参考百度echarts-options
+          // https://echarts.apache.org/zh/option.html#title
+          let grade = [
+              "强",
+              "中",
+              "弱"
+          ]
+          //发送请求获取数据
+          httpGetPromise('http://192.168.82.89:8200/Vector/json/weibo/weibo.json').then(weiboData => {
+              //数据处理后，得到所有坐标
+              weiboData = weiboData.map(function (serieData) {
+                  let px = serieData[0] / 1000;
+                  let py = serieData[1] / 1000;
+                  let res = [
+                      [px, py]
+                  ];
+                  for (let i = 2; i < serieData.length; i += 2) {
+                      let dx = serieData[i] / 1000;
+                      let dy = serieData[i + 1] / 1000;
+                      let x = px + dx;
+                      let y = py + dy;
+                      res.push([x.toFixed(2), y.toFixed(2), 1]);
+                      px = x;
+                      py = y;
+                  }
+                  return res;
+              });
+
+              let option = {
+                  cesium: {
+                      roam: true
+                  },
+                  animation: false,
+                  postRender: true,
+                  postRenderFrame: 10,
+                  coordinateSystem: 'cesium',   // 设置cesium坐标系
+                  title: {
+                      text: "中国微博签到图",
+                      subtext: 'From MapGIS',
+                      sublink: 'http://www.smaryun.com',
+                      left: 'center',
+                      top: 'top',
+                      textStyle: {
+                          color: '#fff'
+                      }
+                  },
+                  tooltip: {},
+                  legend: {
+                      left: 'right',
+                      top: 'top',
+                      data: [grade[0], grade[1], grade[2]],
+                      textStyle: {
+                          color: '#ccc'
+                      }
+                  },
+                  series: [{
+                      name: grade[2],
+                      type: 'scatter',
+                      coordinateSystem: 'cesium',    // 设置cesium坐标系
+                      symbolSize: 1,
+                      large: true,
+                      itemStyle: {
+                          normal: {
+                              shadowBlur: 2,
+                              shadowColor: 'rgba(37, 140, 249, 0.8)',
+                              color: 'rgba(37, 140, 249, 0.8)'
+                          }
+                      },
+                      data: weiboData[0]
+                  }, {
+                      name: grade[1],
+                      type: 'scatter',
+                      coordinateSystem: 'cesium',   // 设置cesium坐标系
+                      symbolSize: 1,
+                      large: true,
+                      itemStyle: {
+                          normal: {
+                              shadowBlur: 2,
+                              shadowColor: 'rgba(14, 241, 242, 0.8)',
+                              color: 'rgba(14, 241, 242, 0.8)'
+                          }
+                      },
+                      data: weiboData[1]
+                  }, {
+                      name: grade[0],
+                      type: 'scatter',
+                      coordinateSystem: 'cesium',   // 设置cesium坐标系
+                      symbolSize: 1,
+                      large: true,
+                      itemStyle: {
+                          normal: {
+                              shadowBlur: 2,
+                              shadowColor: 'rgba(255, 255, 255, 0.8)',
+                              color: 'rgba(255, 255, 255, 0.8)'
+                          }
+                      },
+                      data: weiboData[2]
+                  }]
+              };
+              // 声明cesium的echarts图层并将其显示到三维球上
+              layer = new window.EchartsLayer(viewer, option).addTo(viewer);
+          });
+      }
+
+      // 发送请求获取数据
+      function httpGetPromise(url){
+          return new Promise(function (resolve, reject) {
+              const handler = function () {
+                  if (this.readyState !== 4) {
+                      return;
+                  }
+                  if (this.status === 200) {
+                      resolve(this.response);
+                  } else {
+                      reject(new Error(this.statusText));
+                  }
+              };
+              const client = new XMLHttpRequest();
+              client.open('GET', url);
+              client.onreadystatechange = handler;
+              client.responseType = 'json';
+              client.setRequestHeader('Accept', 'application/json');
+              client.send();
+          });
+      }
+
+  </script>
+</head>
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+</body>
+</html>

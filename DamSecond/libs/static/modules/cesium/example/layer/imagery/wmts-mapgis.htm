@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta charset='utf-8'/>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>加载WMTS图层</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer, options, layer;
+
+      //地图初始化函数
+      function init() {
+          //初始化球体
+          initViewer();
+          //加载WMTS图层
+          addWMTSLayer();
+          //飞到指定视角
+          flyTo();
+      }
+
+      //初始化球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer("mapgis-3d-viewer", {});
+          viewer.showPosition();
+      }
+
+      //加载WMTS图层
+      function addWMTSLayer() {
+          options = {
+              //服务基地址
+              url: "http://192.168.82.89:6163/igs/rest/ogc/EPSG_4326_WORLD_TILE/WMTSServer",
+              //图层名称
+              layer: "EPSG_4326_WORLD_TILE",
+              //请求格式
+              format: "image/png",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "EPSG:4326_EPSG_4326_WORLD_TILE_028mm_GB",
+              //裁图方式
+              tilingScheme: new Cesium.GeographicTilingScheme({
+                  rectangle: Cesium.Rectangle.fromDegrees(-180.0, -90.0, 180.0, 90.0),
+                  ellipsoid: Cesium.Ellipsoid.WGS84,
+                  numberOfLevelZeroTilesX: 2,
+                  numberOfLevelZeroTilesY: 1
+              })
+          };
+          //加载WMS地图
+          layer = viewer.scene.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+          //视点跳转
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(114.348, 30.33, 600000),
+              duration: 2
+          });
+      }
+
+      //飞到指定视角
+      function flyTo() {
+          //飞到指定视角
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(116.5258,41.8054,20000000)
+          });
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+</body>
+
+</html>

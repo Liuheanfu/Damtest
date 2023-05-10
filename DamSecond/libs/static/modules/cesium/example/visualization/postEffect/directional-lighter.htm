@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>平行光源</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css" />
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css" />
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/visual.css" />
+  <script>
+      'use strict';
+      //取得jquery对象
+      var $ = layui.$;
+      //颜色管理器对象
+      var colorpicker = layui.colorpicker;
+      let slider = layui.slider;
+      // 定义三维视图的主要类
+      var viewer = null;
+      var scene
+      // 定义平行光对象
+      var parallelLight;
+
+      function init() {
+          //初始化三维球体
+          initViewer();
+          // 添加模型数据
+          addM3D();
+          //初始化示例UI
+          initUI();
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          //构造三维视图类
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          scene = viewer.scene;
+      }
+
+      // 添加模型数据
+      function addM3D() {
+          let url = 'http://192.168.82.89:8089/igs/rest/services/Scene/高级住所模型/SceneServer';
+          viewer.scene.layers.appendSceneLayer(url, {
+              duration: 2,
+              autoReset: true,
+          });
+      }
+
+      // 添加光源
+      function addLightBtnClicked() {
+          // 构造绘制工具
+          var drawElement = new Cesium.DrawElement(viewer);
+          drawElement.startDrawingPolyline({
+              callback: function (result) {
+                  var positions = result.positions;
+
+                  if (positions.length !== 2) {
+                      console.error("输入点个数不等于2!");
+                      return;
+                  }
+
+                  // 移除上一次添加的光源
+                  scene.removeLight(parallelLight);
+                  // 添加光源
+                  parallelLight = new Cesium.ParallelLight({
+                      // 根据用户输入线段计算方向光方向
+                      direction: Cesium.Cartesian3.subtract(positions[1], positions[0], new Cesium.Cartesian3()),
+                      // 光源颜色
+                      color: new Cesium.Color(1.0, 1.0, 1.0, 0.0),//new Cesium.Color.fromRandom(),
+                      // 光源强度
+                      intensity: 0.5,
+                  });
+
+                  scene.addLight(parallelLight);
+
+                  drawElement.stopDrawing();
+              }
+          });
+      }
+
+      // 移除光源
+      function removeLightBtnClicked() {
+          scene.removeLight(parallelLight);
+      }
+
+      //初始化示例UI
+      function initUI() {
+          // 光源强度
+          slider.render({
+              elem: "#light-intensity",
+              value: 5.0,
+              min: 0.0,
+              max: 50.0,
+              step: 1,
+              theme: 'rgb(102 147 251)',
+              change: function (value) {
+                  parallelLight.intensity = value * 0.1;
+              },
+          });
+          //光源颜色
+          colorpicker.render({
+              elem: '#light-color'
+              , color: '#ffffff'
+              , done: function (color) {
+                  $('#light-color-input').val(color);
+                  if (Cesium.defined(parallelLight))
+                      parallelLight.color = Cesium.Color.fromCssColorString(color);
+              }
+          });
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right">
+  <form class="layui-form" action="">
+    <div class="sample-main-panel" style="height: 100px">
+      <div class="layui-form-item">
+        <label class="layui-form-label">光源颜色</label>
+        <div class="layui-input-inline">
+          <input disabled type="text" value="#ffffff" placeholder="光源颜色" class="layui-input" id="light-color-input">
+        </div>
+        <div class="layui-inline" style="left: -11px;">
+          <div id="light-color"></div>
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <div class="slideBarDiv">
+          光源强度<div id="light-intensity" class="demo-slider"></div>
+        </div>
+      </div>
+    </div>
+    <div class="sample-button-panel">
+      <button onclick="addLightBtnClicked()" type="button" class="layui-btn layui-btn-normal">添加光源</button>
+      <button onclick="removeLightBtnClicked()" type="button" class="layui-btn layui-btn-normal">移除光源</button>
+    </div>
+  </form>
+</div>
+<style>
+  .layui-slider {
+    top: -20px;
+    width: 196px;
+    left: 94px;
+  }
+</style>
+</body>
+
+</html>

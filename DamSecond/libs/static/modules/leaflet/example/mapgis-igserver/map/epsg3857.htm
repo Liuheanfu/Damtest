@@ -1,0 +1,43 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>矢量地图文档显示</title>
+    <script src="./static/libs/include-leaflet-local.js"></script>
+    <script type="text/javascript">
+        /**显示地图
+         */
+        function init() {
+            "use strict";
+            //地图容器
+            var map = L.map('leaf_map', {
+                //添加缩放控件
+                zoomControl: true,
+                //投影坐标系，默认3857
+                crs: L.CRS.EPSG3857,
+                //中心点，这里必须传入经纬度
+                center: [0,0],
+                //最大级数
+                maxZoom: 20,
+                //最小级数
+                minZoom: 0,
+                //显示级数
+                zoom: 1
+            });
+            var { protocol, ip, port } = window.webclient;
+            //创建地图文档图层
+            var mapDocLayer = new Zondy.Map.MapDocLayer("WorldMKTVector", {
+                //IP地址
+                ip: `${ip}`,
+                //端口号
+                port: `${port}`,
+                //只显示一个图层,不平铺显示
+                noWrap: true
+            }).addTo(map);
+        }
+    </script>
+</head>
+<body onload="init()">
+<div id="leaf_map" style="width: 100%; height:700px;">
+</div>
+</body>
+</html>

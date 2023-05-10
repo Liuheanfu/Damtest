@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta charset='utf-8'/>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>二维瓦片地图服务</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer, options, layer;
+
+      //地图初始化函数
+      function init() {
+          //初始化球体
+          initViewer();
+          //添加栅格图层
+          addTileLayer();
+          //飞到指定视角
+          flyTo();
+      }
+
+      //初始化球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+      }
+
+      //加载IGS二维瓦片地图服务
+      function addTileLayer() {
+          options = {
+              //服务基地址，后面要加'/{level}/{row}/{col}'
+              url: "http://192.168.82.89:6163/igs/rest/mrms/tile/北京市Tile/{level}/{row}/{col}"
+          };
+          //加载IGS二维瓦片地图服务
+          layer = viewer.imageryLayers.addImageryProvider(new Cesium.MapGISTileServerImageProvider(options));
+      }
+
+      //飞到指定视角
+      function flyTo() {
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(116, 40, 1000000),
+              duration: 2
+          });
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+</body>
+
+</html>

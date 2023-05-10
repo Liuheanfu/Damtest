@@ -1,0 +1,64 @@
+﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>水坝GIS系统展示</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+    <meta name="renderer" content="webkit" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1" />
+    <link type="text/css" rel="stylesheet" href="css/base.css" />
+    <link href="images/title.ico" rel="shortcut icon" />
+
+    <script src="libs/jquery-1.11.2.min.js"></script>
+    <!-- 系统首页功能库 -->
+    <script type="text/javascript" src="js/init.js"></script>
+
+
+
+
+</head>
+<body>
+    <div id="header">
+        <a class="logo">
+            <img src="images/logo.png" />            
+            <span>水坝GIS系统展示</span>
+        </a>
+    </div>
+    <div id="content">
+        <div class="leftsidebar_box">
+            <div class="line"></div>
+            <dl class="control">
+                <dt class="first_dt">地图基础功能</dt>
+                <dd onclick="setCore('ZoomSlider', 'MapControls')">导航控件</dd>
+                <dd onclick="setCore('Operation', 'MapControls')">基本操作</dd>
+                <dd onclick="setCore('LayerControl', 'MapControls')">图层控件</dd>
+                <dd onclick="setCore('MousePosition', 'MapControls')">鼠标位置</dd>
+                <dd onclick="setCore('ScaleLine', 'MapControls')"> 比例尺</dd>
+                <dd onclick="setCore('OverviewMap', 'MapControls')">鹰 眼</dd>
+                <dd onclick="setCore('LayerSearch', 'MapControls')">图层探查</dd>
+                <dd onclick="setCore('MapAnimation', 'MapControls')">动画效果</dd>
+            </dl>
+
+            <dl class="GraphicOperation">
+                <dt>图形绘制</dt>
+                <dd onclick="setCore('DrawFeatures', 'Drawing')">绘制几何图形</dd>
+                <dd onclick="setCore('FeaturesStyle', 'Drawing')">图形样式编辑</dd>
+                <dd onclick="setCore('ModifyFeatures', 'Drawing')">图形交互编辑</dd>
+            </dl>
+
+
+            <dl class="MapMarker">
+                <dt>地图标注</dt>
+                <dd onclick="setCore('AddTextandPic', 'MapMarker')">Marker</dd>
+                <dd onclick="setCore('AddPopup', 'MapMarker')">popup</dd>
+                <dd onclick="setCore('AddClusterLabels', 'MapMarker')">聚合标注</dd>
+            </dl>
+
+
+        </div>
+        <div class="iframe_wrapper">
+            <iframe id="container_iframe" name="container_iframe" scrolling="no"></iframe>
+        </div>
+    </div>
+</body>
+</html>

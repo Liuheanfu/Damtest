@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset='utf-8'/>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+    <title>Tin三角网</title>
+    <!--引入Cesium.js库-->
+    <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+    <!--引入Cesium.js库相关css样式-->
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+    <!--turf.js库-->
+    <script src="http://localhost:8080/static/libs/cdn/turf/turf.min.js"></script>
+    <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+    <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+    <!--示例公共样式-->
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/css/analyse.css"/>
+    <script>
+    'use strict';
+    let viewer;
+    let dataSource;
+    //点位数据
+    let data = {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [113.969705349690571, 30.4385415882922814]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.234228759020411, 30.2845152993154159]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.488706975590873, 30.3632026425970736]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.217207999999971, 30.483413000000013]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.309567704715604, 30.7650103529715047]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.56739431887253, 30.6779520157237116]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.850333914927859, 30.8654622805651115]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.329658090234332, 30.9290818347077305]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.354771072132735, 30.3113024800070434]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.319412, 30.5983660000000128]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.573634999999967, 30.6080240000000217]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.073035171287813, 30.7456136124539299]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.105480381866897, 30.3799810470818379]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.569696471690847, 30.2364733849050786]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.826762370894443, 30.3487837292173239]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.436171951230733, 30.4473672536691851]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.41745356051203, 30.592122808560525]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.620860072988648, 30.4361362192379623]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.696981528578064, 30.3462879437881661]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.783086125884125, 30.4648377516733149]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.654553176282334, 30.5372155291189813]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.740657773588381, 30.6570132297187108]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.760624057021673, 30.7680756813163789]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.538499153826336, 30.831718209759984]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.444907200232805, 30.7393741488810264]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.2078075844625, 30.6420385171437459]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.090505669291943, 30.5347197436898234]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.15913976859386, 30.2639270246258505]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.172866588454255, 30.7730672521746982]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.137925592445995, 30.9652427302200977]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.271450112906109, 30.8766423474848821]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.456138234664024, 30.862915527624498]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.597150111411622, 30.9664906229346784]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.709460455723871, 30.850436600478691]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.635834785563617, 30.6969457965852897]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.819275014606959, 30.5659170615543339]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.558465437259628, 30.4985308549669867]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.35755471021217, 30.45610250267125]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.438667736659895, 30.2726622736279154]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.315126357916427, 30.2327297067613365]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.715699919296767, 30.2414649557634014]}
+        },
+        {
+          "type": "Feature",
+          "properties": {"mpLayer": 0},
+          "geometry": {"type": "Point", "coordinates": [114.14541294873348, 30.8154956044704385]}
+        }
+      ]
+    };
+
+
+    //初始化
+    function init() {
+      //地图初始化
+      initMap();
+      //加载原始的点数据
+      loadOriginData();
+    }
+
+    //地图初始化
+    function initMap() {
+      //构造三维视图类（视图容器div的id，三维视图设置参数）
+      viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+      //加载天地图
+      addTDT();
+      //设置相机位置
+      setCamera();
+    }
+
+    //加载天地图
+    function addTDT() {
+      let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          };
+          //添加卫星影像
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+    }
+
+    //设置相机位置
+    function setCamera() {
+      //相机的最终位置
+      let destination = Cesium.Cartesian3.fromDegrees(114.289398, 30.59418345, 500000.0);
+      viewer.scene.camera.setView({
+        destination: destination
+      });
+    }
+
+    //准备点要素数据
+    function loadOriginData() {
+      viewer.dataSources.add(Cesium.GeoJsonDataSource.load(data, {
+        //marker大小
+        markerSize: 15
+      }));
+    }
+
+    //点击Tin三角网分析
+    function tin(){
+      tinSource().then(res => {
+        //保存结果资源，移除时使用
+        dataSource = res
+      });
+    }
+
+    //Tin三角网分析
+    function tinSource() {
+      //先移除之前的分析结果
+      if (dataSource) {
+        viewer.dataSources.remove(dataSource);
+      }
+      //turf.tin分析
+      let geoJson = turf.tin(data);
+      //添加分析结果
+      let source = viewer.dataSources.add(Cesium.GeoJsonDataSource.load(geoJson, {
+        //折线和多边形轮廓的颜色
+        stroke: Cesium.Color.fromCssColorString('#00ffff').withAlpha(0.5),
+        //多边形内部颜色，这里给一个透明度，否则轮廓会被覆盖
+        fill: Cesium.Color.fromCssColorString('#00ffff').withAlpha(0.2),
+        //折线和多边形轮廓宽度j
+        strokeWidth: 1,
+        //设置指定多边形是否为轮廓的属性，不设置true，轮廓不显示
+        outline: true
+      }));
+      //视角飞行
+      viewer.flyTo(source);
+      return source;
+    }
+    </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right" style="width: 134px;">
+    <form class="layui-form" action="">
+        <div class="sample-button-panel">
+            <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="tin()">Tin三角网分析</button>
+        </div>
+    </form>
+</div>
+</body>
+</html>

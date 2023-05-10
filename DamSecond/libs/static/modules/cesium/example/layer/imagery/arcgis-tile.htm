@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>加载 ArcGIS瓦片图层</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      "use strict";
+      //定义三维视图的主要类
+      let viewer, options;
+
+      //地图初始化函数
+      function init() {
+          //初始化球体
+          initViewer();
+          // 加载ArcGIS瓦片图层
+          addArcGISTileLayer();
+          //飞到指定视角
+          flyTo();
+          //初始化示例UI
+          initUI();
+      }
+
+      //初始化球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+      }
+
+      //加载ArcGIS瓦片图层
+      function addArcGISTileLayer() {
+          let blueImage = new Cesium.UrlTemplateImageryProvider({
+              //请求高德地图瓦片的url模板,{x}、{y}、{z}分别表示瓦片的x坐标、y坐标和层级
+              url: "https://map.geoq.cn/arcgis/rest/services/ChinaOnlineStreetPurplishBlue/MapServer/tile/{z}/{y}/{x}",
+              //地图瓦片的切分方式,经纬度或者Web墨卡托
+              tilingScheme: new Cesium.WebMercatorTilingScheme(),
+              maximumLevel: 12, //最大瓦片级别
+              maximumLevel: 0, //最小瓦片级别
+              tileWidth: 256, //瓦片宽度
+              tileHeight: 256, //瓦片高度
+              hasAlphaChannel: true, // 是否支持图像显示透明度
+          });
+          viewer.imageryLayers.addImageryProvider(blueImage);
+      }
+
+      //飞到指定视角
+      function flyTo() {
+          //飞到指定视角
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(116.5258,41.8054,20000000)
+          });
+      }
+
+      //初始化示例UI
+      function initUI() {
+          layui.use(function () {
+              let layer = layui.layer,
+                  $ = layui.jquery,
+                  form = layui.form;
+
+              //不同方式加载arcgis瓦片图层
+              form.on("select(method)", function (data) {
+                  switch (data.value) {
+                      case "1":
+                          removeLayer();
+                          let blueImage = new Cesium.UrlTemplateImageryProvider({
+                              url: "https://map.geoq.cn/arcgis/rest/services/ChinaOnlineStreetPurplishBlue/MapServer/tile/{z}/{y}/{x}",
+                              tilingScheme: new Cesium.WebMercatorTilingScheme(),
+                              maximumLevel: 12,
+                          });
+                          viewer.imageryLayers.addImageryProvider(blueImage);
+                          break;
+                      case "2":
+                          removeLayer();
+                          let arcgislyr = viewer.imageryLayers.addImageryProvider(
+                              new Cesium.ArcGisMapServerImageryProvider({
+                                  // ArcGIS MapServer服务地址
+                                  url: "https://map.geoq.cn/arcgis/rest/services/ChinaOnlineStreetWarm/MapServer",
+                                  usePreCachedTilesIfAvailable: true, //是否使用已经预缓存的瓦片方式加载图层
+                                  layers: undefined, //逗号分隔的列表，用于规定加载的图层，未定义表示加载所有的图层
+                                  //地图瓦片的切分方式,经纬度或者Web墨卡托
+                                  tilingScheme: new Cesium.GeographicTilingScheme(),
+                                  maximumLevel: 12, //最大瓦片级别
+                                  tileWidth: 256, //瓦片宽度
+                                  tileHeight: 256, //瓦片高度
+                              })
+                          );
+                          // 跳转至图层所在位置
+                          viewer.flyTo(arcgislyr);
+                          break;
+                      case "3":
+                          removeLayer();
+                          let wmtsLayer = viewer.imageryLayers.addImageryProvider(
+                              new Cesium.WebMapTileServiceImageryProvider({
+                                  // WMTS 的GetTile操作的基础URL
+                                  url: "https://map.geoq.cn/arcgis/rest/services/ChinaOnlineStreetGray/MapServer/WMTS",
+                                  // WMTS请求的图层名
+                                  layer: "ChinaOnlineStreetWarm",
+                                  // 从服务器获取图像的MIME类型
+                                  format: "image/png",
+                                  // WMTS请求的样式名
+                                  style: "default",
+                                  // WMTS请求的瓦片集id
+                                  tileMatrixSetID: "default028mm",
+                                  tileWidth: 256, //瓦片宽度
+                                  tileHeight: 256, //瓦片高度
+                                  maximumLevel: 12, //最大瓦片级别
+                                  maximumLevel: 0, //最小瓦片级别
+                              })
+                          );
+                          viewer.flyTo(wmtsLayer);
+                          break;
+                  }
+              });
+          });
+      }
+
+      // 移除当前底图
+      function removeLayer() {
+          viewer.imageryLayers.removeAll();
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right">
+  <form class="layui-form" action="">
+    <div class="layui-form-item sample-main-panel" style="border-bottom: none;">
+      <label class="layui-form-label">ArcGIS瓦片</label>
+      <div class="layui-input-block layui-input-block-select">
+        <select id="method" name="method" lay-filter="method">
+          <option value="1">方法一</option>
+          <option value="2">方法二</option>
+          <option value="3">方法三</option>
+        </select>
+      </div>
+    </div>
+  </form>
+</div>
+</body>
+</html>

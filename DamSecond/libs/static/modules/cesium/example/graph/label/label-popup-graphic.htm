@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+  <title>气泡弹窗</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css" />
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer;
+      let graphicsLayer;
+      //鼠标事件
+      let handler = null;
+      //dom的pop
+      let domPopup = null;
+      //click添加的pop
+      let clickPopups = [];
+
+      function init() {
+          //初始化球体
+          initViewer();
+          //添加天地图
+          addTDT();
+          addGraphicLayer();
+          //直接弹出存在于dom节点上的气泡框
+          let xlmLon = 114.285992;
+          let xlmLat = 30.585234;
+          addPopupByDom(xlmLon,xlmLat);
+      }
+
+      function addGraphicLayer() {
+          graphicsLayer = new Cesium.GraphicsLayer(viewer,{});
+      }
+
+      function activeClickAdd() {
+          if(!handler){
+              handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+              handler.setInputAction(function(event) {
+                  let cartesian = viewer.camera.pickEllipsoid(event.position);
+                  let cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+                  let lon = Cesium.Math.toDegrees(cartographic.longitude); // 经度
+                  let lat = Cesium.Math.toDegrees(cartographic.latitude); // 纬度
+                  addPopupByHtml(lon,lat)
+              }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+          }
+      }
+
+      function disActive(){
+          if(handler){
+              handler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_CLICK);
+              handler = null;
+          }
+      }
+
+      function addPopupByHtml(lon,lat){
+          let html = `
+            <div class="box" id="clickPopups-${clickPopups.length}" style="display: block">
+              <div class="pine"></div>
+              <div class="box-wrap">
+                <div class="adorn big"></div>
+                <div class="adorn middle"></div>
+                <div class="adorn small"></div>
+                <div class="close-btn" onclick="removeClickPopup(${clickPopups.length})"></div>
+                <div class="station-popup-content">
+                  <div class="station-name-div">江汉路地铁站</div>
+                  <div class="one-ls-div">
+                    <div class="ls-name" style="color:#EB81B9">2号线</div>
+                    <div class="one-s-div">
+                      <span>开往&nbsp;</span><span class="station-name-span">光谷广场</span><span>首 06:00</span><span>&nbsp;&nbsp;末 23:18</span>
+                    </div>
+                    <div class="one-s-div">
+                      <span>开往&nbsp;</span><span class="station-name-span">天河机场</span><span>首 06:02</span><span>&nbsp;&nbsp;末 23:02</span>
+                    </div>
+                  </div>
+                  <div class="one-ls-div">
+                    <div class="ls-name" style="color:#018237">6号线</div>
+                    <div class="one-s-div">
+                      <span>开往&nbsp;</span><span class="station-name-span">东风公司</span><span>首 06:07</span><span>&nbsp;&nbsp;末 23:00</span>
+                    </div>
+                    <div class="one-s-div">
+                      <span>开往&nbsp;</span><span class="station-name-span">金银湖公园</span><span>首 06:04</span><span>&nbsp;&nbsp;末 23:06</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>`;
+          let popupGraphic = new Cesium.Graphic({
+              //标绘类型
+              type: 'div',
+              //标绘位置
+              positions: [Cesium.Cartesian3.fromDegrees(lon, lat, 0)],
+              //标绘样式
+              style: {
+                  //html字符串
+                  html: html,
+                  pixelOffset: new Cesium.Cartesian2(8, 56)
+              }
+          });
+          //将标绘添加入标绘图层
+          let graphic = graphicsLayer.addGraphic(popupGraphic);
+          clickPopups.push(graphic);
+      }
+
+      function removeClickPopup(index){
+          clickPopups[index].remove();
+          document.getElementById(`clickPopups-${index}`).remove();
+      }
+
+      function addPopupByDom(popupLon,popupLat) {
+          let popupDiv = document.getElementById('popupDiv');
+          popupDiv.style.display = 'block';
+          let popupGraphic = new Cesium.Graphic({
+              //标绘类型
+              type: 'div',
+              //标绘位置
+              positions: [Cesium.Cartesian3.fromDegrees(popupLon, popupLat, 0)],
+              //标绘样式
+              style: {
+                  //dom对象
+                  html: popupDiv,
+                  pixelOffset: new Cesium.Cartesian2(8, 56)
+              }
+          });
+          //将标绘添加入标绘图层
+          domPopup = graphicsLayer.addGraphic(popupGraphic);
+          //飞过去
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(popupLon, popupLat,5000),
+              duration: 1
+          });
+      }
+
+      function removeDomPopup() {
+          domPopup.remove();
+          document.getElementById('popupDiv').remove();
+      }
+
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer("mapgis-3d-viewer", {});
+      }
+
+      function addTDT() {
+          let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+  </script>
+</head>
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+<div class="layui-panel layui-panel-right" style="width: 200px;">
+  <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="activeClickAdd()">激活点击添加</button>
+  <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="disActive()">取消激活</button>
+</div>
+<div id="popupDiv" class="box">
+  <div class="pine"></div>
+  <div class="box-wrap">
+    <div class="adorn big"></div>
+    <div class="adorn middle"></div>
+    <div class="adorn small"></div>
+    <div class="close-btn" onclick="removeDomPopup()"></div>
+    <div class="station-popup-content">
+      <div class="station-name-div">循礼门地铁站</div>
+      <div class="one-ls-div">
+        <div class="ls-name" style="color:#3080B7">1号线</div>
+        <div class="one-s-div">
+          <span>开往&nbsp;</span><span class="station-name-span">汉口北</span><span>首 06:04</span><span>&nbsp;&nbsp;末 23:21</span>
+        </div>
+        <div class="one-s-div">
+          <span>开往&nbsp;</span><span class="station-name-span">径河</span><span>首 06:00</span><span>&nbsp;&nbsp;末 22:59</span>
+        </div>
+      </div>
+      <div class="one-ls-div">
+        <div class="ls-name" style="color:#EB81B9">2号线</div>
+        <div class="one-s-div">
+          <span>开往&nbsp;</span><span class="station-name-span">光谷广场</span><span>首 06:00</span><span>&nbsp;&nbsp;末 23:18</span>
+        </div>
+        <div class="one-s-div">
+          <span>开往&nbsp;</span><span class="station-name-span">天河机场</span><span>首 06:02</span><span>&nbsp;&nbsp;末 23:02</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+<style>
+  .box {
+    width: 300px;
+    position: relative;
+    bottom: 0;
+    left: 0;
+    font-size: 12px;
+    display: none;
+    pointer-events: auto;
+    font-family: "Microsoft YaHei";
+  }
+  .box-wrap {
+    position: absolute;
+    left: 45px;
+    top: 0;
+    width: 100%;
+    min-height: 1rem;
+    border-top: 1px solid #4AE6FF;
+  }
+  .station-popup-content{
+    width: 100%;
+    height: 100%;
+    background-color:  rgba(18,59,68,0.8);
+    box-sizing: border-box;
+    padding: 8px;
+    text-align: left;
+    color: #fff;
+    font-size: 12px;
+  }
+  .one-ls-div{
+    padding: 3px 15px 0 15px;
+  }
+  .ls-name{
+    margin-bottom: 4px;
+    font-style: italic;
+    font-weight: bold;
+  }
+  .station-name-div{
+    width:100%;
+    padding: 4px;
+    box-sizing: border-box;
+    text-indent: 8px;
+    background-color:  rgba(18,59,68,1);
+    margin-top: 5px;
+  }
+  .station-name-span{
+    font-weight: bold;
+    width:112px;
+    display: inline-block;
+  }
+  .pine {
+    position: absolute;
+    border-top: 1px solid #42c9df;
+    width: 75px;
+    height: 75px;
+    left: -30px;
+    box-sizing: border-box;
+    transform-origin: top right;
+    transform: rotateZ(-45deg);
+  }
+  .adorn{
+    background-color: rgba(74,230,255,1);
+    position: absolute;
+    height: 8px;
+    transform: skewX(45deg);
+  }
+  .adorn.big{
+    width: 19px;
+    right: 22px;
+  }
+  .adorn.middle{
+    width: 8px;
+    right: 11px;
+  }
+  .adorn.small{
+    width: 4px;
+    right: 4px;
+  }
+  .close-btn{
+    position: absolute;
+    right: 0;
+    top:0;
+    transform: translate(50%, -50%);
+    width: 15px;
+    height: 15px;
+    border: 1px solid #00FBFF;
+    border-radius: 50%;
+    color: #00FBFF;
+    line-height: 8px;
+    text-align: center;
+    cursor: pointer;
+    z-index:111;
+    background: #00253F;
+  }
+  .close-btn::before{
+    content: "\2715";
+    font-size: 12px;
+    line-height: 13px;
+  }
+</style>
+</html>

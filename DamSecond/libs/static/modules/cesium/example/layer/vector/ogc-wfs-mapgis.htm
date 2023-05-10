@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="initial-scale=1,maximum-scale=1,user-scalable=no"
+  />
+  <title>加载WFS图层</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link
+    rel="stylesheet"
+    href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"
+  />
+  <link
+    rel="stylesheet"
+    href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"
+  />
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link
+    rel="stylesheet"
+    href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"
+  />
+  <!--示例公共样式-->
+  <link
+    rel="stylesheet"
+    href="http://localhost:8080/static/libs/css/style.css"
+  />
+  <script>
+      "use strict";
+      //定义三维视图的主要类
+      let viewer, options, layer;
+
+      //地图初始化函数
+      function init() {
+          //初始化球体
+          initViewer();
+          //加载WFS图层
+          addWFSLayer();
+      }
+
+      //初始化球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer("mapgis-3d-viewer", {});
+          viewer.showPosition();
+
+          //加载天地图
+          let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          };
+          //添加卫星影像
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      //加载WFS图层
+      function addWFSLayer() {
+          var url = "http://192.168.82.89:8089/igs/rest/services/Map/Hubei4326/WFSServer";
+          //加载WMTS图层参数
+          var options = {
+              //wfs服务版本，可选1.0.0 1.1.0 2.0.0
+              version: "2.0.0",
+              //请求数量
+              count: 10000,
+              //自动跳转至图层范围
+              autoReset: true,
+              //文档信息回调
+              getDocLayerIndexes: function (indexs) {
+                  layer = viewer.scene.layers.getLayer(indexs[0]);
+              },
+              //加载完成后图层信息回调
+              loaded: function (layerInfo) {},
+              //渲染器
+              renderer: {
+                  //类型为simple，以简单符号渲染
+                  type: "simple",
+                  //符号类型
+                  symbol: {
+                      type: "polygon-3d",
+                      symbolLayers: {
+                          //选择填充类型
+                          type: "fill",
+                          //填充材料
+                          material: {color: new Cesium.Color.fromCssColorString('#72A84D').withAlpha(0.6)},
+                          //外边线样式
+                          outline: {
+                              color: new Cesium.Color.fromCssColorString('#727F8B'),
+                              width: 2.0,
+                          },
+                          height: 1000,
+                          size: 20,
+                      },
+                  },
+                  label: "标签",
+              },
+          };
+          //加载WFS地图
+          layer = viewer.scene.layers.appendFeatureLayer(url, options);
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+</body>
+</html>

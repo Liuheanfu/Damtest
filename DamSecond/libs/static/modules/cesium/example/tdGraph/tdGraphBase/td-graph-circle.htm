@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset='utf-8'/>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>圆</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/graphic.css"/>
+  <script>
+      'use strict';
+      //取得jquery对象
+      let $ = layui.$;
+      //颜色管理器对象
+      let colorpicker = layui.colorpicker;
+      //定义三维视图的主要类
+      let viewer, options, graphicsLayer, circle;
+
+      //地图初始化函数
+      function init() {
+          //初始化球体
+          initViewer();
+          //初始化标绘图层
+          addGraphicLayer();
+          //纯色圆
+          addColorCircle();
+          //闪烁圆
+          addFlickerCircle();
+          //圆柱体
+          addCircleVolume();
+          //动态圆波
+          addCircleWave();
+          //扫描圆
+          addScanCircle();
+          //脉冲圆
+          addPulseCircle();
+          //扩散圆
+          addDiffuseCircle();
+          //线圈发光圆
+          addScanlineCircle();
+          //消隐圆
+          addFadeCircle();
+          //多彩圆
+          addColorfulCircle();
+          //模糊圆
+          addBlurCircle();
+          //螺旋圆
+          addSpiralCircle();
+          //雷达
+          addRadarCircle();
+          //雷达扫描圆
+          addRadaScanCircle();
+          //雷达线圆
+          addRadarLineCircle();
+          //图片圆
+          addImageCircle();
+          //图片旋转圆
+          addRotateCircle();
+          //雷达图片
+          addRadarImageCircle();
+          //添加天地图
+          addTDT();
+          //视点跳转
+          flyTo();
+          //初始化示例UI
+          initUI();
+      }
+
+      //初始化球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          //显示鼠标位置
+          viewer.showPosition();
+      }
+
+      //初始化标绘图层
+      function addGraphicLayer() {
+          graphicsLayer = new Cesium.GraphicsLayer(viewer, {
+              clickGraphic: function (graphic) {
+                  if (!graphic) {
+                      return;
+                  }
+                  circle = graphic;
+                  //更新样式面板
+                  //圆填充颜色和材质颜色区分
+                  let color = circle.style.color;
+                  let count = 0;
+                  let duration = 2000;
+                  let speed = 1;
+                  let image = '';
+
+                  //隐藏非公共参数
+                  $("#circle-count").parents('.layui-form-item').hide();
+                  $("#circle-duration").parents('.layui-form-item').hide();
+                  $("#circle-speed").parents('.layui-form-item').hide();
+                  $("#circle-image").parents('.layui-form-item').hide();
+
+                  // 不同材质，参数不一样
+                  if (typeof (circle.style.material) !== 'undefined') {
+                      if (typeof (circle.style.material.uniforms) !== 'undefined') {
+                          if (typeof (circle.style.material.uniforms.color) !== 'undefined') {
+                              color = circle.style.material.uniforms.color;
+                          }
+                          if (typeof (circle.style.material.uniforms.count) !== 'undefined') {
+                              count = circle.style.material.uniforms.count;
+                              $("#circle-count").parents('.layui-form-item').show();
+                          }
+                          if (typeof (circle.style.material.uniforms.duration) !== 'undefined') {
+                              duration = circle.style.material.uniforms.duration;
+                              $("#circle-duration").parents('.layui-form-item').show();
+                          }
+                          if (typeof (circle.style.material.uniforms.speed) !== 'undefined') {
+                              speed = circle.style.material.uniforms.speed;
+                              $("#circle-speed").parents('.layui-form-item').show();
+                          }
+                          if (typeof (circle.style.material.uniforms.image) !== 'undefined') {
+                              image = circle.style.material.uniforms.image;
+                              $("#circle-image").parents('.layui-form-item').show();
+                          }
+                      }
+                  }
+                  //拉伸高度
+                  let extrudedHeight = typeof (circle.style.extrudedHeight) !== 'undefined' ? circle.style.extrudedHeight : 0;
+
+                  let formParam = {
+                      'color': color.toCssHexString(),
+                      'radius': circle.style.radius,
+                      'offsetHeight': circle.style.offsetHeight,
+                      'extrudedHeight': extrudedHeight,
+                      'count': count, // 圆波数量
+                      'duration': duration, // 持续时间
+                      'speed': speed, // 速度
+                      'image': image, // 图片
+                  }
+                  layui.form.val('example', formParam);
+
+                  colorpicker.render({
+                      elem: '#circle-color',
+                      color: color.toCssHexString(),
+                      done: function (color) {
+                          $('#circle-color-input').val(color);
+                          if (typeof (circle.style.material) !== 'undefined' && typeof (circle.style.material.uniforms) !== 'undefined') {
+                              circle.style.material.uniforms.color = Cesium.Color.fromCssColorString(color);
+                          } else {
+                              circle.style.color = Cesium.Color.fromCssColorString(color);
+                          }
+                      }
+                  });
+
+                  //这个时候展开编辑面板
+                  $('#editPanel').show();
+              }
+          });
+      }
+
+      //纯色圆
+      function addColorCircle() {
+          let circleGraphic1 = new Cesium.Graphic({
+              //类型
+              type: 'circle',
+              //位置
+              positions: [Cesium.Cartesian3.fromDegrees(113.9733, 29.9994, 0)],
+              //样式
+              style: {
+                  //颜色
+                  color: Cesium.Color.AQUA,
+                  //离地高度
+                  offsetHeight: 100,
+                  //半径
+                  radius: 200
+              }
+          })
+          //将标绘点添加入标绘图层
+          graphicsLayer.addGraphic(circleGraphic1);
+      }
+
+      //闪烁圆
+      function addFlickerCircle() {
+          let circleGraphic2 = new Cesium.Graphic({
+              //标绘类型
+              type: 'circle',
+              //标绘位置
+              positions: [Cesium.Cartesian3.fromDegrees(113.9833, 29.9994, 0)],
+              //标绘样式
+              style: {
+                  //离地高度
+                  offsetHeight: 100,
+                  //圆半径
+                  radius: 200,
+                  //闪烁圆材质
+                  material: Cesium.Material.fromType(Cesium.Material.LineFlickerMaterialType, {
+                      //材质颜色
+                      color: Cesium.Color.DARKGOLDENROD,
+                      //闪烁速度
+                      speed: 10
+                  })
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(circleGraphic2);
+      }
+
+      //圆柱体
+      function addCircleVolume() {
+          let circleGraphic3 = new Cesium.Graphic({
+              //标绘类型
+              type: 'circle',
+              //标绘位置
+              positions: [Cesium.Cartesian3.fromDegrees(113.9933, 29.9994, 0)],
+              //标绘样式
+              style: {
+                  //颜色
+                  color: Cesium.Color.CRIMSON,
+                  //离地高度
+                  offsetHeight: 100,
+                  //圆柱半径
+                  radius: 200,
+                  //圆柱拉伸高度
+                  extrudedHeight: 400
+              }
+          })
+          //将标绘点添加入标绘图层
+          graphicsLayer.addGraphic(circleGraphic3);
+      }
+
+      //动态圆波
+      function addCircleWave() {
+          let circleGraphic4 = new Cesium.Graphic({
+              //类型
+              type: 'circle',
+              //位置
+              positions: [Cesium.Cartesian3.fromDegrees(113.9733, 29.9894, 0)],
+              //样式
+              style: {
+                  //离地高度
+                  offsetHeight: 100,
+                  //半径
+                  radius: 200,
+                  // 动态圆波材质
+                  material: Cesium.Material.fromType(Cesium.Material.CircleWaveMaterialType, {
+                      //材质颜色
+                      color: Cesium.Color.GOLD,
+                      // 圆波数量
+                      count: 2,
+                      //持续时间
+                      duration: 2000
+                  })
+              }
+          })
+          //将标绘点添加入标绘图层
+          graphicsLayer.addGraphic(circleGraphic4);
+      }
+
+      //扫描圆
+      function addScanCircle() {
+          let circleGraphic5 = new Cesium.Graphic({
+              //标绘类型
+              type: 'circle',
+              //标绘位置
+              positions: [Cesium.Cartesian3.fromDegrees(113.9833, 29.9894, 0)],
+              //标绘样式
+              style: {
+                  //离地高度
+                  offsetHeight: 100,
+                  //圆半径
+                  radius: 400,
+                  //扫描圆材质
+                  material: Cesium.Material.fromType(Cesium.Material.CircleScanMaterialType, {
+                      //材质颜色
+                      color: Cesium.Color.BLUEVIOLET,
+                      //扫描速度
+                      speed: 10.0
+                  })
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(circleGraphic5);
+      }
+
+      //脉冲圆
+      function addPulseCircle() {
+          let circleGraphic6 = new Cesium.Graphic({
+              //标绘类型
+              type: 'circle',
+              //标绘位置
+              positions: [Cesium.Cartesian3.fromDegrees(113.9933, 29.9894, 0)],
+              //标绘样式
+              style: {
+                  //离地高度
+                  offsetHeight: 100,
+                  //圆半径
+                  radius: 200,
+                  //脉冲圆材质
+                  material: Cesium.Material.fromType(Cesium.Material.CirclePulseMaterialType, {
+                      //材质颜色
+                      color: Cesium.Color.CRIMSON,
+                      //脉冲速度
+                      speed: 10.0
+                  })
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(circleGraphic6);
+      }
+
+      //扩散圆
+      function addDiffuseCircle() {
+          let circleGraphic7 = new Cesium.Graphic({
+              //标绘类型
+              type: 'circle',
+              //标绘位置
+              positions: [Cesium.Cartesian3.fromDegrees(114.0033, 29.9894, 0)],
+              //标绘样式
+              style: {
+                  //离地高度
+                  offsetHeight: 100,
+                  //圆半径
+                  radius: 400,
+                  //扩散圆材质
+                  material: Cesium.Material.fromType(Cesium.Material.CircleDiffuseMaterialType, {
+                      //材质颜色
+                      color: Cesium.Color.BROWN,
+                      //扩散速度
+                      speed: 10.0
+                  })
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(circleGraphic7);
+      }
+
+      //线圈发光圆
+      function addScanlineCircle() {
+          let circleGraphic8 = new Cesium.Graphic({
+              //标绘类型
+              type: 'circle',
+              //标绘位置
+              positions: [Cesium.Cartesian3.fromDegrees(114.0133, 29.9894, 0)],
+              //标绘样式
+              style: {
+                  //离地高度
+                  offsetHeight: 100,
+                  //圆半径
+                  radius: 200,
+                  //线圈发光圆材质
+                  material: Cesium.Material.fromType(Cesium.Material.ScanlineType, {
+                      //材质颜色
+                      color: Cesium.Color.CYAN,
+                      //线圈发光速度
+                      speed: 1000
+                  })
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(circleGraphic8);
+      }
+
+      //消隐圆
+      function addFadeCircle() {
+          let circleGraphic9 = new Cesium.Graphic({
+              //标绘类型
+              type: 'circle',
+              //标绘位置
+              positions: [Cesium.Cartesian3.fromDegrees(114.0233, 29.9894, 0)],
+              //标绘样式
+              style: {
+                  //离地高度
+                  offsetHeight: 100,
+                  //圆半径
+                  radius: 200,
+                  //消隐材质
+                  material: Cesium.Material.fromType(Cesium.Material.CircleFadeMaterialType, {
+                      //材质颜色
+                      color: Cesium.Color.BURLYWOOD,
+                      //消隐速度
+                      speed: 10.0
+                  })
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(circleGraphic9);
+      }
+
+      //多彩圆
+      function addColorfulCircle() {
+          let circleGraphic10 = new Cesium.Graphic({
+              //标绘类型
+              type: 'circle',
+              //标绘位置
+              positions: [Cesium.Cartesian3.fromDegrees(114.0333, 29.9894, 0)],
+              //标绘样式
+              style: {
+                  //离地高度
+                  offsetHeight: 100,
+                  //圆半径
+                  radius: 200,
+                  //多彩材质
+                  material: Cesium.Material.fromType(Cesium.Material.CircleColorfulMaterialType, {
+                      //材质颜色
+                      color: Cesium.Color.CORNFLOWERBLUE,
+                      //渐变速度
+                      speed: 10.0
+                  })
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(circleGraphic10);
+      }
+
+      //模糊圆
+      function addBlurCircle() {
+          let circleGraphic11 = new Cesium.Graphic({
+              //标绘类型
+              type: 'circle',
+              //标绘位置
+              positions: [Cesium.Cartesian3.fromDegrees(114.0433, 29.9894, 0)],
+              //标绘样式
+              style: {
+                  //离地高度
+                  offsetHeight: 100,
+                  //圆半径
+                  radius: 200,
+                  //模糊材质
+                  material: Cesium.Material.fromType(Cesium.Material.CircleBlurMaterialType, {
+                      //材质颜色
+                      color: Cesium.Color.CADETBLUE,
+                      //模糊速度
+                      speed: 10.0
+                  })
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(circleGraphic11);
+      }
+
+      //螺旋圆
+      function addSpiralCircle() {
+          let circleGraphic12 = new Cesium.Graphic({
+              //标绘类型
+              type: 'circle',
+              //标绘位置
+              positions: [Cesium.Cartesian3.fromDegrees(113.9733, 29.9794, 0)],
+              //标绘样式
+              style: {
+                  //离地高度
+                  offsetHeight: 100,
+                  //圆半径
+                  radius: 200,
+                  //螺旋材质
+                  material: Cesium.Material.fromType(Cesium.Material.CircleSpiralMaterialType, {
+                      //材质颜色
+                      color: Cesium.Color.CHARTREUSE,
+                      //螺旋速度
+                      speed: 10.0
+                  })
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(circleGraphic12);
+      }
+
+      //雷达
+      function addRadarCircle() {
+          let circleGraphic13 = new Cesium.Graphic({
+              //类型
+              type: 'circle',
+              //位置
+              positions: [Cesium.Cartesian3.fromDegrees(113.9833, 29.9794, 0)],
+              //标绘样式
+              style: {
+                  //圆离地高度
+                  offsetHeight: 100,
+                  //圆半径
+                  radius: 200,
+                  //雷达材质
+                  material: Cesium.Material.fromType(Cesium.Material.RadarMaterialType, {
+                      //材质颜色
+                      color: new Cesium.Color(177 / 255, 244 / 255, 207 / 255),
+                      //扫描速度
+                      speed: 1
+                  })
+              }
+          })
+          //将标绘点添加入标绘图层
+          graphicsLayer.addGraphic(circleGraphic13);
+      }
+
+      //雷达扫描
+      function addRadaScanCircle() {
+          let circleGraphic14 = new Cesium.Graphic({
+              //标绘类型
+              type: 'circle',
+              //标绘位置
+              positions: [Cesium.Cartesian3.fromDegrees(113.9933, 29.9794, 0)],
+              //标绘样式
+              style: {
+                  //离地高度
+                  offsetHeight: 100,
+                  //圆半径
+                  radius: 200,
+                  //雷达扫描圆材质
+                  material: Cesium.Material.fromType(Cesium.Material.RadarScanMaterialType, {
+                      //材质颜色
+                      color: Cesium.Color.DARKGOLDENROD,
+                      //雷达线速度
+                      speed: 10
+                  })
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(circleGraphic14);
+      }
+
+      //雷达线圆
+      function addRadarLineCircle() {
+          let circleGraphic15 = new Cesium.Graphic({
+              //标绘类型
+              type: 'circle',
+              //标绘位置
+              positions: [Cesium.Cartesian3.fromDegrees(114.0033, 29.9794, 0)],
+              //标绘样式
+              style: {
+                  //离地高度
+                  offsetHeight: 100,
+                  //圆半径
+                  radius: 200,
+                  //雷达线圆材质
+                  material: Cesium.Material.fromType(Cesium.Material.RadarLineMaterialType, {
+                      //材质颜色
+                      color: Cesium.Color.DARKCYAN,
+                      //雷达线速度
+                      speed: 10
+                  })
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(circleGraphic15);
+      }
+
+      //图片圆
+      function addImageCircle() {
+          let circleGraphic16 = new Cesium.Graphic({
+              //标绘类型
+              type: 'circle',
+              //标绘位置
+              positions: [Cesium.Cartesian3.fromDegrees(113.9733, 29.9694, 0)],
+              //标绘样式
+              style: {
+                  //离地高度
+                  offsetHeight: 100,
+                  //圆半径
+                  radius: 200,
+                  //图片材质
+                  material: Cesium.Material.fromType(Cesium.Material.ImageType, {
+                      //图片路径
+                      image: 'http://192.168.82.89:8200/NoneSpatialData/image/earth.jpg',
+                      //x、y轴重复次数
+                      repeat: new Cesium.Cartesian2(1.0, 1.0)
+                  })
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(circleGraphic16);
+      }
+
+      //图片旋转圆
+      function addRotateCircle() {
+          let circleGraphic17 = new Cesium.Graphic({
+              //标绘类型
+              type: 'circle',
+              //标绘位置
+              positions: [Cesium.Cartesian3.fromDegrees(113.9833, 29.9694, 0)],
+              //标绘样式
+              style: {
+                  //离地高度
+                  offsetHeight: 100,
+                  //圆半径
+                  radius: 200,
+                  //图片材质
+                  material: Cesium.Material.fromType(Cesium.Material.ImageType, {
+                      //图片路径
+                      image: 'http://192.168.82.89:8200/NoneSpatialData/image/earth.jpg',
+                      //x、y轴重复次数
+                      repeat: new Cesium.Cartesian2(1.0, 1.0)
+                  }),
+                  //顺时针旋转角度
+                  stRotation: 0
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(circleGraphic17);
+          //使用定时器达到旋转圆的效果
+          let circleGraphic17Interval = setInterval(function () {
+              circleGraphic17.style.stRotation += Cesium.Math.toRadians(1);
+          }, 30);
+      }
+
+      //雷达图片
+      function addRadarImageCircle() {
+          let circleGraphic18 = new Cesium.Graphic({
+              //标绘类型
+              type: 'circle',
+              //标绘位置
+              positions: [Cesium.Cartesian3.fromDegrees(113.9933, 29.9694, 0)],
+              //标绘样式
+              style: {
+                  //离地高度
+                  offsetHeight: 100,
+                  //圆半径
+                  radius: 200,
+                  //图片材质
+                  material: Cesium.Material.fromType(Cesium.Material.ImageType, {
+                      //材质颜色
+                      color: Cesium.Color.DARKGREEN,
+                      //图片路径
+                      image: 'http://192.168.82.89:8200/NoneSpatialData/image/circle-scan.png',
+                      //x、y轴重复次数
+                      repeat: new Cesium.Cartesian2(1.0, 1.0)
+                  }),
+                  //顺时针旋转角度
+                  stRotation: 0
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(circleGraphic18);
+          //使用定时器达到雷达效果
+          let circleGraphic18Interval = setInterval(function () {
+              circleGraphic18.style.stRotation -= Cesium.Math.toRadians(1);
+          }, 30);
+      }
+
+      //添加天地图
+      function addTDT() {
+          //加载天地图底图
+               let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      //视点跳转
+      function flyTo() {
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(114.0100, 29.9839, 13000),
+              duration: 2
+          });
+      }
+
+      //初始化示例UI
+      function initUI() {
+          layui.use('colorpicker', function () {
+
+              //半径
+              $("#circle-radius").bind("input propertychange", function () {
+                  circle.style.radius = Number($('#circle-radius').val());
+              })
+
+              //拉伸高度
+              $("#circle-extrudedHeight").bind("input propertychange", function () {
+                  circle.style.extrudedHeight = Number($('#circle-extrudedHeight').val());
+              })
+
+              //离地高度
+              $("#circle-offsetHeight").bind("input propertychange", function () {
+                  circle.style.offsetHeight = Number($('#circle-offsetHeight').val());
+              })
+
+              //填充颜色
+              colorpicker.render({
+                  elem: '#circle-color',
+                  color: '#9dfafe',
+                  done: function (color) {
+                      $('#circle-color-input').val(color);
+                      circle.style.color = Cesium.Color.fromCssColorString(color);
+                  }
+              });
+
+              //圆波数量
+              $("#circle-count").bind("input propertychange", function () {
+                  circle.style.material.uniforms.count = Number($('#circle-count').val());
+              })
+
+              //持续时间
+              $("#circle-duration").bind("input propertychange", function () {
+                  circle.style.material.uniforms.duration = Number($('#circle-duration').val());
+              })
+
+              //速度
+              $("#circle-speed").bind("input propertychange", function () {
+                  circle.style.material.uniforms.speed = Number($('#circle-speed').val());
+              })
+          });
+      }
+
+      // 开始绘制
+      function startDrawing() {
+          graphicsLayer.startDrawing({
+              type: 'circle',
+              style: {
+                  color: Cesium.Color.fromCssColorString('#9dfafe'),
+                  radius: 200,
+                  offsetHeight: 100
+              }
+          });
+      }
+
+      // 结束绘制
+      function stopDrawing() {
+          graphicsLayer.stopDrawing();
+      }
+
+      //删除标绘
+      function deleteLabel() {
+          circle.remove();
+          $('#editPanel').hide();
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right" style="text-align: center;width: 140px;padding: 10px;">
+  <button onclick="startDrawing()" style="margin:0 auto !important;" type="button" class="layui-btn layui-btn-normal graphic-button-margin">添加圆</button>
+</div>
+<div class="layui-panel layui-panel-right" id="editPanel" style="display: none;top: 70px;">
+  <form class="layui-form" action="" lay-filter="example">
+    <div class="sample-main-panel">
+      <div class="layui-form-item">
+        <label class="layui-form-label">颜色</label>
+        <div class="layui-input-inline" style="width: 145px;margin-left:10px;">
+          <input disabled type="text" value="#00ffff" name="color" placeholder="颜色" class="layui-input" id="circle-color-input">
+        </div>
+        <div class="layui-inline">
+          <div id="circle-color"></div>
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <label class="layui-form-label">半径</label>
+        <div class="layui-input-block" style="width: 183px;">
+          <input id="circle-radius" type="number" value="200" name="radius" name="title" lay-verify="title" autocomplete="off" placeholder="40" class="layui-input">
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <label class="layui-form-label">离地高度</label>
+        <div class="layui-input-block" style="width: 183px;">
+          <input id="circle-offsetHeight" type="number" name="offsetHeight" value="100" name="title" lay-verify="title" autocomplete="off" placeholder="100" class="layui-input">
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <label class="layui-form-label">拉伸高度</label>
+        <div class="layui-input-block" style="width: 183px;">
+          <input id="circle-extrudedHeight" type="number" name="extrudedHeight" value="0" name="title" lay-verify="title" autocomplete="off" placeholder="0" class="layui-input">
+        </div>
+      </div>
+      <div class="layui-form-item" style="display: none;">
+        <label class="layui-form-label">圆波数量</label>
+        <div class="layui-input-block" style="width: 183px;">
+          <input id="circle-count" type="number" name="count" value="0" name="title" lay-verify="title" autocomplete="off" placeholder="0" class="layui-input">
+        </div>
+      </div>
+      <div class="layui-form-item" style="display: none;">
+        <label class="layui-form-label">持续时间</label>
+        <div class="layui-input-block" style="width: 183px;">
+          <input id="circle-duration" type="number" name="duration" value="0" name="title" lay-verify="title" autocomplete="off" placeholder="0" class="layui-input">
+        </div>
+      </div>
+      <div class="layui-form-item" style="display: none;">
+        <label class="layui-form-label">速度</label>
+        <div class="layui-input-block" style="width: 183px;">
+          <input id="circle-speed" type="number" name="speed" value="0" name="title" lay-verify="title" autocomplete="off" placeholder="0" class="layui-input">
+        </div>
+      </div>
+      <div class="layui-form-item" style="display: none;">
+        <label class="layui-form-label">图片</label>
+        <div class="layui-input-block" style="width: 183px;">
+          <input id="circle-image" type="text" disabled name="image" value="" name="title" lay-verify="title" autocomplete="off" placeholder="图片" class="layui-input">
+        </div>
+      </div>
+    </div>
+    <div class="sample-button-panel">
+      <button onclick="$('#editPanel').hide()" style="float: right;width:auto;margin-right: 0 !important;" type="button" class="layui-btn layui-btn-normal graphic-button-margin">关闭面板</button>
+      <span onclick="deleteLabel()" style="cursor:pointer;float: right;line-height: 32px;margin-right: 15px;">删除标绘</span>
+    </div>
+  </form>
+</div>
+</body>
+
+</html>

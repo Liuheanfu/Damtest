@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta charset='utf-8'/>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>墙</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/graphic.css"/>
+  <script>
+      'use strict';
+      //取得jquery对象
+      let $ = layui.$;
+      //颜色管理器对象
+      let colorpicker = layui.colorpicker;
+      //定义三维视图的主要类
+      let viewer, options, graphicsLayer, wall;
+
+      //地图初始化函数
+      function init() {
+          //初始化球体
+          initViewer();
+          //初始化标绘图层
+          addGraphicLayer();
+          //纯色墙
+          addColoWall();
+          //流动墙
+          addTrailWall();
+          //流动墙2
+          addTrailWall2();
+          //流动墙3
+          addTrailWall3();
+          //图片墙
+          addImageWall();
+          //加载天地图底图
+          addTDT();
+          //视点跳转
+          flyTo();
+          //初始化示例UI
+          initUI();
+      }
+
+      //初始化球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          //显示鼠标位置
+          viewer.showPosition();
+      }
+
+      //初始化标绘图层
+      function addGraphicLayer() {
+          graphicsLayer = new Cesium.GraphicsLayer(viewer, {
+              clickGraphic: function (graphic) {
+                  wall = graphic;
+                  console.log("wall.style",wall.style)
+                  //更新样式面板
+                  $('#wall-extrudedHeight').val(wall.style.extrudedHeight);
+                  colorpicker.render({
+                      elem: '#wall-color'
+                      , color: wall.style.color.toCssHexString()
+                      , done: function (color) {
+                          $('#wall-color-input').val(color);
+                          wall.style.color = Cesium.Color.fromCssColorString(color);
+                      }
+                  });
+              }
+          });
+      }
+
+      //纯色墙
+      function addColoWall() {
+          let wallGraphic = new Cesium.Graphic({
+              //类型
+              type: 'wall',
+              //几何坐标
+              positions: [Cesium.Cartesian3.fromDegrees(113.9473, 30.0085, 0), Cesium.Cartesian3.fromDegrees(114.03, 30.0085, 0)],
+              //样式
+              style: {
+                  //颜色
+                  color: Cesium.Color.AQUA,
+                  // 拉伸高度
+                  extrudedHeight: 400
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(wallGraphic);
+      }
+
+      //流动墙
+      function addTrailWall() {
+          let wallGraphic2 = new Cesium.Graphic({
+              //类型
+              type: 'wall',
+              // 几何点坐标
+              positions: [Cesium.Cartesian3.fromDegrees(113.9473, 29.9985, 0), Cesium.Cartesian3.fromDegrees(114.03, 29.9985, 0)],
+              // 样式
+              style: {
+                  // 拉伸高度
+                  extrudedHeight: 400,
+                  // 材质
+                  material: Cesium.Material.fromType('PolylineTrailLink', {
+                      // 材质图片
+                      image: 'http://192.168.82.89:8200/NoneSpatialData/image/arrowhead.png',
+                      // 刘冬速度
+                      duration: 1000,
+                      // 流动方向
+                      direction: 2.0,
+                      // 颜色
+                      color: Cesium.Color.YELLOW,
+                      // x、y轴重复
+                      repeat: new Cesium.Cartesian2(20.0, 1.0)
+                  })
+              }
+          })
+          //将标绘点添加入标绘图层
+          graphicsLayer.addGraphic(wallGraphic2);
+      }
+
+      //流动墙2
+      function addTrailWall2() {
+          let wallGraphic3 = new Cesium.Graphic({
+              type: 'wall',
+              positions: [Cesium.Cartesian3.fromDegrees(113.9473, 29.9885, 0), Cesium.Cartesian3.fromDegrees(114.03, 29.9885, 0)],
+              style: {
+                  extrudedHeight: 400,
+                  material: Cesium.Material.fromType('PolylineTrailLink', {
+                      image: 'http://192.168.82.89:8200/NoneSpatialData/image/lineClr.png',
+                      duration: 1000,
+                      direction: 3.0,
+                      color: Cesium.Color.AQUA,
+                      repeat: new Cesium.Cartesian2(1.0, 1.0)
+                  })
+              }
+          })
+          //将标绘点添加入标绘图层
+          graphicsLayer.addGraphic(wallGraphic3);
+      }
+
+      //流动墙3
+      function addTrailWall3() {
+          let wallGraphic4 = new Cesium.Graphic({
+              type: 'wall',
+              positions: [Cesium.Cartesian3.fromDegrees(113.9473, 29.9785, 0), Cesium.Cartesian3.fromDegrees(113.9573, 29.9785, 0)
+                  , Cesium.Cartesian3.fromDegrees(113.9573, 29.9725, 0), Cesium.Cartesian3.fromDegrees(113.9473, 29.9725, 0),
+                  Cesium.Cartesian3.fromDegrees(113.9473, 29.9785, 0)],
+              style: {
+                  extrudedHeight: 400,
+                  material: Cesium.Material.fromType('PolylineTrailLink', {
+                      image: 'http://192.168.82.89:8200/NoneSpatialData/image/arrowhead.png',
+                      duration: 1000,
+                      direction: 2.0,
+                      color: Cesium.Color.TOMATO,
+                      repeat: new Cesium.Cartesian2(20.0, 1.0)
+                  })
+              }
+          })
+          //将标绘点添加入标绘图层
+          graphicsLayer.addGraphic(wallGraphic4);
+      }
+
+      //图片墙
+      function addImageWall() {
+          let wallGraphic5 = new Cesium.Graphic({
+              type: 'wall',
+              positions: [Cesium.Cartesian3.fromDegrees(113.9673, 29.9785, 0), Cesium.Cartesian3.fromDegrees(113.9773, 29.9785, 0)],
+              style: {
+                  extrudedHeight: 400,
+                  material: Cesium.Material.fromType(Cesium.Material.ImageType, {
+                      image: 'data:image/png;base64,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',
+                      repeat: new Cesium.Cartesian2(1.0, 1.0)
+                  })
+              }
+          })
+          //将标绘点添加入标绘图层
+          graphicsLayer.addGraphic(wallGraphic5);
+      }
+
+      //添加TDT
+      function addTDT() {
+               let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      //视点跳转
+      function flyTo() {
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(114, 29.86, 10000),
+              duration: 2,
+              orientation : {
+                  heading : Cesium.Math.toRadians(0),
+                  pitch : Cesium.Math.toRadians(-40.0),
+                  roll : 0.0
+              }
+          });
+      }
+
+      function initUI() {
+          layui.use('colorpicker', function () {
+              //拉伸
+              $("#wall-extrudedHeight").bind("input propertychange", function () {
+                  wall.style.extrudedHeight = Number($('#wall-extrudedHeight').val());
+              })
+
+              //填充颜色
+              colorpicker.render({
+                  elem: '#wall-color'
+                  , color: '#9dfafe'
+                  , done: function (color) {
+                      $('#wall-color-input').val(color);
+                      wall.style.color = Cesium.Color.fromCssColorString(color);
+                  }
+              });
+          });
+      }
+
+      function startDrawing() {
+          graphicsLayer.startDrawing({
+              type: 'wall',
+              style: {
+                  color: Cesium.Color.fromCssColorString($('#wall-color-input').val()),
+                  extrudedHeight: Number($('#wall-extrudedHeight').val())
+              }
+          });
+      }
+
+      function stopDrawing() {
+          graphicsLayer.stopDrawing();
+      }
+
+      function editable() {
+          if($('#setEditable').html() === "编辑几何") {
+              graphicsLayer.startEdit();
+              $('#setEditable').html("停用编辑");
+          }else {
+              graphicsLayer.stopEdit();
+              $('#setEditable').html("编辑几何");
+          }
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right">
+  <form class="layui-form" action="">
+    <div class="sample-main-panel">
+      <div class="layui-form-item">
+        <label class="layui-form-label">填充颜色</label>
+        <div class="layui-input-inline">
+          <input disabled type="text" value="#00ffff" placeholder="填充颜色" class="layui-input" id="wall-color-input">
+        </div>
+        <div class="layui-inline" style="left: -11px;">
+          <div id="wall-color"></div>
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <label class="layui-form-label">拉伸高度</label>
+        <div class="layui-input-block">
+          <input id="wall-extrudedHeight" value="400" type="text" name="title" lay-verify="title" autocomplete="off"
+                 class="layui-input">
+        </div>
+      </div>
+    </div>
+    <div class="sample-button-panel">
+      <button onclick="stopDrawing()" type="button" class="layui-btn layui-btn-normal graphic-button-margin">结束绘制</button>
+      <button onclick="stopDrawing()" type="button" class="layui-btn layui-btn-normal graphic-button-margin">结束绘制</button>
+      <button id="setEditable" onclick="editable()" type="button" class="layui-btn layui-btn-normal">编辑几何</button>
+    </div>
+  </form>
+</div>
+</body>
+
+</html>

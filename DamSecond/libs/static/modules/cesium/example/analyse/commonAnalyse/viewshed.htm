@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>可视域分析</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/analyse.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer = null;
+      //定义可视域分析
+      let viewShed3d = null;
+      //鼠标移动方式的可视域，对鼠标操作的标志位
+      let mouseLeftOnceClicked = false;//是否点击了一次鼠标左键
+      let mouseEventDone = false; //可视域分析的鼠标事件完整结束
+      //Cesium的鼠标事件
+      let handler = null;
+      //当前分析类型
+      let currentType = "model";
+
+      //地图初始化函数
+      function init() {
+          //初始化三维球体
+          initViewer();
+          //三维试图类构造完毕，添加一个模型
+          addModel();
+          //加载天地图
+          addTDT();
+          //初始化示例UI
+          initUI();
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          viewer.showPosition();
+      }
+
+      //添加一个可视域分析(鼠标点选)
+      function addViewShed() {
+          //由于可视域分析接口目前只支持一个展示，因此先删除已有的
+          removeViewShed();
+          //构造一个可视域分析
+          viewShed3d = new Cesium.ViewshedAnalysis();
+          //将可视域分析添加到分析管理类中
+          viewer.scene.visualAnalysisManager.add(viewShed3d);
+          //可视域分析，需要关注观察点和目标点的位置。
+          // 这里我们采用鼠标左键标记观察点，鼠标移动和右键标记终止点的方式来展示
+          addCesiumScreenSpaceEventHandler();
+          layer.msg('鼠标左键选取，再次左键结束');
+      }
+
+      //增加Cesium的ScreenSpaceEventHandler中的左键、移动、右键三个鼠标事件。
+      function addCesiumScreenSpaceEventHandler() {
+          handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+          //鼠标左击
+          handler.setInputAction(function (movement) {
+              //如果有可视域分析对象，那么确定其观察点
+              if (viewShed3d !== null && mouseEventDone === false) {
+                  //获取当前点击的Cartesian3坐标点
+                  let cartesian = viewer.scene.pickPosition(movement.position);
+                  //转换成cartographic
+                  let cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+                  //将height抬高2米，方便展示
+                  if (mouseLeftOnceClicked === false) {
+                      cartographic.height += 2.0;
+                  }
+                  //再反转成Cartesian3坐标
+                  cartesian = Cesium.Cartographic.toCartesian(cartographic);
+                  if (cartesian !== undefined) {
+                      if (mouseLeftOnceClicked) {
+                          viewShed3d.targetPosition = cartesian;
+                          mouseEventDone = true;
+                          mouseLeftOnceClicked = false;
+                      } else {
+                          viewShed3d.viewPosition = cartesian;
+                          mouseLeftOnceClicked = true;
+                      }
+                  }
+              }
+          }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+          //鼠标移动
+          handler.setInputAction(function (movement) {
+              if (mouseLeftOnceClicked === true && mouseEventDone === false) {
+                  let cartesian = viewer.scene.pickPosition(movement.endPosition);
+                  if (cartesian !== undefined) {
+                      viewShed3d.targetPosition = cartesian;
+                  }
+              }
+          }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+      }
+
+      //通过既有参数，展示一个可视域分析结果
+      //可视域关注点是两个：观察点与目标点
+      //目标点可以直接是一个点，例如鼠标方式。
+      //也可以通过其他参数(可视距离，方位角，俯仰角)，交由可视域分析接口来计算完成。
+      function addViewShedByOption() {
+          //由于可视域分析接口目前只支持一个展示，因此先删除已有的
+          removeViewShed();
+          //观察点Cartesian3
+          // let viewPointLon = 108.95919735136667;
+          // let viewPointLat = 34.21930564263558;
+          // let viewPointHeight = 18;
+          let viewPointLon, viewPointLat, viewPointHeight;
+          switch (currentType) {
+              case "model":
+                  viewPointLon = 108.95919735136667;
+                  viewPointLat = 34.21930564263558;
+                  viewPointHeight = 18;
+                  break;
+              case "terrain":
+                  viewPointLon = 120.5548;
+                  viewPointLat = 23.3302;
+                  viewPointHeight = 652;
+                  break;
+          }
+          //观察点Cartesian3
+          // let viewPointLon = 36.3722;
+          // let viewPointLat = 17.9068;
+          // let viewPointHeight = 875;
+          let viewPosition = Cesium.Cartesian3.fromDegrees(viewPointLon, viewPointLat, viewPointHeight);
+          //确定观察点的三个参数，即往什么方向，以什么俯仰角，看多远
+          let viewRadius = 1000; //半径米
+          let heading = 30; //方位角，以北顺时针
+          let pitch = 15; //俯仰角
+          viewShed3d = new Cesium.ViewshedAnalysis();
+          //将可视域分析添加到分析管理类中
+          viewer.scene.visualAnalysisManager.add(viewShed3d);
+          viewShed3d.viewPosition = viewPosition;
+          viewShed3d.viewRadius = viewRadius;//可视距离
+          viewShed3d.heading = heading;//方位角
+          viewShed3d.pitch = pitch;//俯仰角
+          //可视区域夹角，不可视颜色，可是颜色等其他参数(非必须)
+          viewShed3d.horizontAngle = 45;
+          viewShed3d.verticalAngle = 45;
+          viewShed3d.visibleColor = Cesium.Color.BLUE;
+          viewShed3d.unVisibleColor = Cesium.Color.RED;
+      }
+
+      //移除一个可视域分析
+      function removeViewShed() {
+          //如果存在可视域分析，那么通过分析管理类移除
+          if (viewShed3d) {
+              viewer.scene.visualAnalysisManager.remove(viewShed3d);
+              viewShed3d = null;
+          }
+          mouseLeftOnceClicked = false;
+          mouseEventDone = false;
+          //如果有对应的handler,移除对应的Cesium鼠标事件
+          if (handler) {
+              handler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_CLICK);
+              handler.removeInputAction(Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+          }
+      }
+
+      //为方便展示效果，添加一个m3d模型到地球
+      function addModel() {
+          let url = 'http://192.168.82.89:8089/igs/rest/g3d/Scene:DaYanTa-M3D';
+          let options = {
+              duration: 1,
+              maximumScreenSpaceError: 16
+          };
+          viewer.scene.layers.appendSceneLayer(url, options);
+      }
+
+      //添加地形
+      function addTerrain() {
+          let url = "http://192.168.82.89:8089/igs/rest/g3d/Scene:TwTerrain";
+          viewer.scene.layers.appendSceneLayer(url, {
+              //  是否自动定位
+              autoReset: false
+          });
+      }
+
+      //视点跳转
+      function flyTo(type) {
+          switch (type) {
+              case "terrain":
+                  // 定位到地形，并调整到合适的视角
+                  viewer.camera.flyTo({
+                      destination: Cesium.Cartesian3.fromDegrees(120.5558, 23.2979, 2000), //跳转位置
+                      duration: 3,
+                      orientation: {
+                          heading: Cesium.Math.toRadians(0), //绕垂直于地心的轴旋转 ,相当于头部左右转
+                          pitch: Cesium.Math.toRadians(-15), //绕经度线旋转， 相当于头部上下
+                          roll: Cesium.Math.toRadians(0), //绕纬度线旋转 ，面对的一面瞬时针转
+                      },
+                  });
+                  break;
+          }
+      }
+
+      //初始化示例UI
+      function initUI() {
+          layui.use(function () {
+              let form = layui.form;
+              //监听选择的分析数据类型
+              form.on("select(content)", function (data) {
+                  //删除所有模型数据
+                  viewer.scene.layers.removeAllSceneLayers();
+                  //由于可视域分析接口目前只支持一个展示，因此先删除已有的
+                  removeViewShed();
+                  //更新当前分析类型
+                  currentType = data.value;
+                  switch (data.value) {
+                      case "model":
+                          //如果要进模型的可视域分析，不必开启地形深度检测
+                          viewer.scene.globe.depthTestAgainstTerrain = false;
+                          //添加大雁塔倾斜摄影
+                          addModel();
+                          break;
+                      case "terrain":
+                          //如果要进行地形的可视域分析，一定要开启地形深度检测
+                          viewer.scene.globe.depthTestAgainstTerrain = true;
+                          //添加地形
+                          addTerrain();
+                          //试点跳转
+                          flyTo(data.value);
+                          break;
+                  }
+              });
+          });
+      }
+
+
+      //加载天地图
+      function addTDT() {
+                   let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+  </script>
+
+</head>
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+<div class="layui-panel layui-panel-right" style="width: 414px;">
+  <form class="layui-form" action="">
+    <div class="sample-main-panel">
+      <div class="layui-form-item">
+        <label class="layui-form-label">模型或地形</label>
+        <div class="layui-input-block">
+          <select lay-filter="content">
+            <option value="model">模型</option>
+            <option value="terrain">地形</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="sample-button-panel">
+      <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="addViewShed()">
+        可视域分析(鼠标点选)
+      </button>
+      <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="addViewShedByOption()">
+        可视域分析(参数)
+      </button>
+      <button type="button" class="layui-btn layui-btn-sm layui-btn-danger" onclick="removeViewShed()">
+        移除可视域分析
+      </button>
+    </div>
+  </form>
+</div>
+</body>
+</html>

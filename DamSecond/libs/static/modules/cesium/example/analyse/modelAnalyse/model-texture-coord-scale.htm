@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+  <title>模型纹理变换</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css" />
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css" />
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/tool.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer = null;
+      //model的layer
+      let tileset = null;
+      //地图初始化函数
+      function init() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          //三维视图类构造完毕，添加一个模型
+          addModel();
+          //添加纹理变形滚动条
+          addSlideBar();
+      }
+
+      //添加一个模型，方便展示
+      function addModel(){
+          let url = 'http://192.168.82.89:8200/3DData/ModelCache/M3D//1.0/景观示例/景观_建筑模型_1.mcj';
+
+          viewer.scene.layers.appendM3DLayer(url,{
+              duration: 1,
+              debugShowBoundingVolume: false,
+              maximumScreenSpaceError: 16,
+              loaded: function (layer) {
+                  tileset = layer;
+              }
+          })
+      }
+
+      //操作面板添加一个拖动条
+      function addSlideBar(){
+          //纹理变形触发
+          layui.slider.render({
+              elem: '#textureCoordScale',
+              value: 1,
+              min: 0,
+              max: 20,
+              theme: 'rgba(24, 144, 255, 1)',
+              input: true,
+              change: function(value){
+                  tileset.textureCoordScale=new Cesium.Cartesian2(value,value)
+              }
+          });
+      }
+
+  </script>
+</head>
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+<div class="layui-panel layui-panel-right">
+  <div class="sample-main-panel">
+    <div class="slideBarDiv" id="textureCoordScaleDiv">
+      纹理变换：<div id="textureCoordScale" class="demo-slider"></div>
+    </div>
+  </div>
+</div>
+<style>
+  #textureCoordScale{
+    width: 218px;
+    display: inline-block;
+  }
+
+  .layui-slider {
+    top: -2px;
+  }
+</style>
+</body>
+</html>

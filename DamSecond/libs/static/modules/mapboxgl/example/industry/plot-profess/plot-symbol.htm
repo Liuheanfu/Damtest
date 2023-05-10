@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+        <title>符号库使用</title>
+        <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.2.0/css/all.min.css" rel="stylesheet" />
+        <!--引入行业标绘脚本库-->
+        <script include="menu,2D" src="./static/libs/include-plot-local.js"></script>
+        <style>
+            #mapgis-viewer {
+                width: 100%;
+                height: 100vh;
+                display: flex;
+                position: relative;
+            }
+            #side {
+                flex: 1;
+                height: 100%;
+                background-color: antiquewhite;
+            }
+            #content {
+                height: 100%;
+                flex: 6.5;
+                position: relative;
+            }
+        </style>
+        <script>
+            'use strict';
+
+            //地图初始化函数
+            function init() {
+                /**
+                 * ***********************地图框架部分***************************
+                 */
+
+                const map = window.getMap('mapboxgl');
+
+                /**
+                 * ***********************行业标绘库部分***************************
+                 */
+
+                const Zondy = window.Zondy;
+                const Plot = Zondy.Plot;
+                const { SymbolManager,FabricLayer,PlotLayer2DGroup,PlotLayer2D,DrawTool } = Plot;
+                const { PlotMenu} = window.webclientPlot;
+
+                const { protocol, ip, port } = window.webclient;
+                const symbolUrl = `${protocol}://${ip}:${port}/static/libs/cdn/webclient-plot/symbols.json`;
+                const symbolOptions = {
+                    // 字体路径。options.fontURL + "assets/fonts/SimHei_Regular.json"
+                    fontURL: `${protocol}://${ip}:${port}/static/libs/cdn/webclient-plot/`,
+                    // 获取单个符号资源的前缀
+                    baseUrl: `${protocol}://${ip}:${port}/static/libs/cdn/webclient-plot/assets/`,
+                    // axios配置
+                    AxiosRequestConfig: {}
+                };
+
+                // #创建符号管理器
+                // 1.可传入符号库url链接
+                let manager = new SymbolManager(symbolUrl, symbolOptions);
+                let drawTool, layer1, plotLayer2DGroup;
+                console.log('manager: ', manager);
+                // 2.可传入json对象
+                //let manager = new SymbolManager(symbolObject, symbolOptions);
+                // 获取overlay图层
+                const canvas = new FabricLayer(map, PlotLayer2DGroup);
+                // #请求获取符号库
+                manager.getSymbols().then(() => {
+                    // 创建二维图层组
+                    plotLayer2DGroup = canvas.getFabricCanvas();
+                    // 创建二维图层
+                    layer1 = new PlotLayer2D();
+                    // 设置图层标绘元素缩放比，默认为1
+                    layer1.setPlotSize(1);
+                    // 添加图层
+                    plotLayer2DGroup.addLayer(layer1);
+
+                    // 创建绘制工具
+                    drawTool = new DrawTool(layer1, {
+                        // 新增标绘对象回调
+                        addedPlot: function (plot) {}
+                    });
+                    // 创建左侧符号目录树，并绑定绘制方法
+                    function drawFunc(id) {
+                        drawTool.stopDraw();
+                        drawTool.drawPlot(manager.getLeafByID(id));
+                    }
+                    // 创建左侧符号目录树
+                    new PlotMenu(manager, drawFunc);
+                });
+
+                // #符号库结构
+                // 1.manager._leaves 符号库节点扁平化数组
+                // 2.manager._symbols 符号库节点（有目录结构）
+            }
+        </script>
+    </head>
+
+    <body onload="init()">
+        <div id="mapgis-viewer">
+            <div id="side"></div>
+            <div id="content" style="position: relative"></div>
+        </div>
+    </body>
+</html>

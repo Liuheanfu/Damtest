@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>加载 ArcGIS Server 图层</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      "use strict";
+      //定义三维视图的主要类
+      let viewer, options;
+
+      //地图初始化函数
+      function init() {
+          //初始化球体
+          initViewer();
+          // 添加arcgis动态图层
+          addArcGISMapServer();
+      }
+
+      //初始化球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+      }
+
+      //添加arcgis动态图层
+      function addArcGISMapServer() {
+          let arcgislyr = viewer.imageryLayers.addImageryProvider(
+              new Cesium.ArcGisMapServerImageryProvider({
+                  // ArcGIS MapServer服务地址
+                  url: "https://map.geoq.cn/arcgis/rest/services/ChinaOnlineStreetWarm/MapServer",
+                  //是否使用已经预缓存的瓦片方式加载图层，为false表示不使用瓦片方式加载图层，使用export服务加载图层
+                  usePreCachedTilesIfAvailable: false,
+                  layers: undefined, //逗号分隔的列表，用于规定加载的图层，未定义表示加载所有的图层
+              })
+          );
+          viewer.flyTo(arcgislyr);
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+  <title>模型(M3D)编辑工具</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css" />
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css" />
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/tool.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer = null;
+      //模型
+      let model = null;
+      //模型编辑工具
+      let transformEditor = null;
+
+      //地图初始化函数
+      function init() {
+          //初始化三维球体
+          initViewer();
+          //添加天地图影像
+          addTdtImage();
+          //三维试图类构造完毕，添加一个模型
+          addM3D();
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          viewer.showPosition();
+      }
+
+      //添加天地图
+      function addTdtImage(){
+          let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      //添加M3D模型
+      function addM3D(){
+          let options = {
+              getDocLayerIndexes: function (indexs) {
+                  //获取数据
+                  var layer = viewer.scene.layers.getLayer(indexs[0]);
+                  //初始化js编辑工具
+                  transformEditor = new Cesium.ModelTransformTool(layer);
+                  //初始化图形化编辑工具
+                  transformEditor.initModelEditor(viewer);
+              }
+          };
+          let url = 'http://192.168.82.89:8089/igs/rest/services/Scene/高级住所模型/SceneServer';
+          viewer.scene.layers.appendSceneLayer(url, options);
+      }
+
+      //移动
+      function move(){
+          transformEditor.activeTranslationEditor();
+      }
+
+      function moveTo() {
+          transformEditor.setTranslation(document.getElementById('longitude').value, document.getElementById('latitude').value, document.getElementById('height').value);
+      }
+
+      //旋转
+      function rotate(){
+          transformEditor.activeRotationEditor();
+      }
+
+      function rotateTo() {
+          let axis = document.getElementById('axis').value;
+          transformEditor.setRotation(document.getElementById('degree').value, axis);
+      }
+
+      //缩放
+      function zoomSingle(){
+          transformEditor.activeScaleEditor({
+              singleScale: true
+          });
+      }
+
+      function zoom(){
+          transformEditor.activeScaleEditor({
+              singleScale: false
+          });
+      }
+
+      function zoomTo() {
+          transformEditor.setScala(document.getElementById('xScale').value, document.getElementById('yScale').value, document.getElementById('zScale').value);
+      }
+
+      function deactivate(){
+          if(transformEditor){
+              transformEditor.deactivate();
+          }
+      }
+
+      // 恢复模型状态
+      function reset(){
+          // 销毁工具
+          transformEditor.destroy();
+          // 移除模型
+          viewer.scene.layers.removeAllSceneLayers();
+          // 重新添加模型和工具
+          addM3D();
+      }
+  </script>
+</head>
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+<div class="layui-panel layui-panel-right" style="width: 930px;">
+  <div class="sample-main-panel" style="border: none;margin-bottom: 0;height: auto;">
+    <div style="margin-bottom: 12px;">
+      <span>平移至 - </span>
+      <span class="sample-title">经度：</span>
+      <input class="sample-input" type="number" id="longitude" value="121.1393">
+      <span class="sample-title">纬度：</span>
+      <input class="sample-input" type="number" id="latitude" value="28.8557">
+      <span class="sample-title">高度：</span>
+      <input class="sample-input" type="number" id="height" value="0">
+      <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" style="margin-left: 8px;" onclick="moveTo()">开始移动</button>
+    </div>
+    <div style="margin-bottom: 12px;">
+      <span>旋转模型 - </span>
+      <span class="sample-title">旋转角度：</span>
+      <input class="sample-input" type="number" id="degree" value="30">
+      <select class="sample-input sample-select" id="axis">
+        <option value="Z">绕Z轴</option>
+        <option value="X">绕X轴</option>
+        <option value="Y">绕Y轴</option>
+      </select>
+      <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="rotateTo()">开始旋转</button>
+    </div>
+    <div style="margin-bottom: 12px;">
+      <span>缩放至 - </span>
+      <span class="sample-title">X轴：</span>
+      <input class="sample-input" type="number" id="xScale" value="2">
+      <span class="sample-title">Y轴：</span>
+      <input class="sample-input" type="number" id="yScale" value="2">
+      <span class="sample-title">Z轴：</span>
+      <input class="sample-input" type="number" id="zScale" value="2">
+      <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" style="margin-left: 8px;" onclick="zoomTo()">开始缩放</button>
+    </div>
+    <div style="margin-bottom: 12px;">
+      <span>激活图形化编辑工具 - </span>
+      <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="move()">移动</button>
+      <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="rotate()">旋转</button>
+      <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="zoomSingle()">缩放(单轴)</button>
+      <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="zoom()">缩放(三轴)</button>
+      <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="deactivate()">取消工具激活状态</button>
+    </div>
+    <div>
+      <button type="button" class="layui-btn layui-btn-sm layui-btn-danger" onclick="reset()">恢复模型状态</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

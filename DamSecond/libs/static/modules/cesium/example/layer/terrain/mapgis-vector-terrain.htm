@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>MapGIS法向地形</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      "use strict";
+      //定义三维视图的主要类
+      let viewer, options, url;
+
+      //地图初始化函数
+      function init() {
+          //初始化球体
+          initViewer();
+          //加载天地图
+          addTDT();
+          // 加载地形数据
+          addTerrain();
+          //视点跳转
+          flyTo();
+          //初始化示例UI操作
+          initUI();
+      }
+
+      //初始化球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer("mapgis-3d-viewer", {});
+          viewer.showPosition();
+      }
+
+      //加载天地图
+      function addTDT() {
+         options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      //添加地形
+      function addTerrain(url) {
+          if(typeof url === 'undefined'){
+              url = "http://192.168.82.89:8089/igs/rest/g3d/G3D:TwTerrain";
+          }
+          viewer.scene.layers.appendSceneLayer(url, {
+              //  是否自动定位
+              autoReset: false,
+              //  是否请求法向（地形）
+              requestVertexNormals: false,
+              // 地形图层加载完后的回调函数
+              loaded: function () {
+                  console.log("terrain loaded");
+              },
+              //回调函数，返回加载的所有图层索引，用于获取文档中的所有图层对象
+              getDocLayerIndexes: function (indexes) {
+                  console.log(indexes);
+              },
+          });
+      }
+
+      // 定位到地形，并调整到合适的视角
+      function flyTo() {
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(120.5347, 23.0864, 3000), //跳转位置
+              duration: 2,
+              orientation: {
+                  heading: Cesium.Math.toRadians(60), //绕垂直于地心的轴旋转 ,相当于头部左右转
+                  pitch: Cesium.Math.toRadians(-15), //绕经度线旋转， 相当于头部上下
+                  roll: Cesium.Math.toRadians(0), //绕纬度线旋转 ，面对的一面瞬时针转
+              },
+          });
+      }
+
+      //初始化示例UI
+      function initUI() {
+          layui.use(function () {
+              var layer = layui.layer,
+                  $ = layui.jquery,
+                  form = layui.form;
+
+              //设置加载的地形服务数据类型
+              form.on("select(dataType)", function (data) {
+                  switch (data.value) {
+                      case "1":
+                          url = "http://192.168.82.89:8089/igs/rest/g3d/G3D:TwTerrain";
+                          addTerrain(url);
+                          break;
+                      case "2":
+                          url =
+                              "http://192.168.82.89:8089/igs/rest/g3d/Scene:TwTerrain";
+                          addTerrain(url);
+                          break;
+                  }
+              });
+          });
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right">
+  <form class="layui-form" action="">
+    <div class="layui-form-item sample-main-panel" style="border-bottom: none;">
+      <label class="layui-form-label">数据类型</label>
+      <div class="layui-input-block layui-input-block-select">
+        <select id="dataType" name="dataType" lay-filter="dataType">
+          <option value="1">G3D服务</option>
+          <option value="2">SceneServer服务</option>
+        </select>
+      </div>
+    </div>
+  </form>
+</div>
+</body>
+</html>

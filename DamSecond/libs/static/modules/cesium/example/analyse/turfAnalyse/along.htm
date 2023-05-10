@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset='utf-8'/>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+    <title>插值</title>
+    <!--引入Cesium.js库-->
+    <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+    <!--引入Cesium.js库相关css样式-->
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+    <!--turf.js库-->
+    <script src="http://localhost:8080/static/libs/cdn/turf/turf.min.js"></script>
+    <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+    <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+    <!--示例公共样式-->
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/css/analyse.css"/>
+    <script>
+    'use strict';
+    let viewer;
+    //起点
+    let startPoint = [89.341, 30.92];
+    //终点
+    let endPoint = [133.989, 30.92];
+    //路线对象
+    let originData = {
+      //类型
+      "type": "FeatureCollection",
+      //要素
+      "features": [{
+        //要素类型
+        "type": "Feature",
+        //要素几何结构
+        "geometry": {
+          //几何类型
+          "type": "LineString",
+          //坐标数组
+          "coordinates": [
+            startPoint,
+            endPoint
+          ]
+        }
+      }]
+    };
+
+    //初始化
+    function init() {
+      //地图初始化
+      initMap();
+      //加载原始的点数据
+      loadOriginData();
+    }
+
+    //地图初始化
+    function initMap() {
+      //构造三维视图类（视图容器div的id，三维视图设置参数）
+      viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+      //加载天地图
+      addTDT();
+      //设置相机位置
+      setCamera();
+    }
+
+    //加载天地图
+    function addTDT() {
+      let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          };
+          //添加卫星影像
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+    }
+
+    //设置相机位置
+    function setCamera() {
+      //相机的最终位置
+      let destination = Cesium.Cartesian3.fromDegrees(114.289398, 30.59418345, 5000000.0);
+      viewer.scene.camera.setView({
+        destination: destination
+      });
+    }
+
+    //加载基础数据效果
+    function loadOriginData() {
+      //添加简单线显示
+      viewer.dataSources.add(Cesium.GeoJsonDataSource.load(originData, {
+        //线颜色
+        stroke: Cesium.Color.SKYBLUE.withAlpha(0.7),
+        //填充色
+        fill: Cesium.Color.SKYBLUE.withAlpha(0.7),
+        //线宽
+        strokeWidth: 5
+      }));
+    }
+
+    //插值分析
+    function along() {
+      //计算距离，传入起点和终点
+      let lineDistance = turf.distance(startPoint, endPoint, {
+        //单位，千米
+        units: 'kilometers'
+      });
+      //完成插值的点数组
+      let arc = [];
+      //插入点数量
+      let count = 100;
+      //将线长度均分
+      let clip = lineDistance / count;
+      //将均分线插值
+      for (let i = 0; i < lineDistance; i += clip) {
+        //计算对应第i个插值点的位置
+        let segment = turf.along(
+          //原始线段，至少要有 2 个点
+          originData.features[0],
+          //距离起点的插入距离
+          i, {
+            //单位，千米
+            units: 'kilometers'
+          }
+        );
+        //将插值点加入到原始数据中
+        arc.push(segment.geometry.coordinates);
+      }
+      //添加终点
+      arc.push(endPoint);
+      //更新数据
+      originData.features[0].geometry.coordinates = arc;
+      //添加分析结果
+      loadAnalyseData();
+    }
+
+    //添加分析结果
+    function loadAnalyseData() {
+      let dataSource = viewer.dataSources.add(Cesium.GeoJsonDataSource.load(originData, {
+        //线颜色
+        stroke: Cesium.Color.RED,
+        //填充色
+        fill: Cesium.Color.RED,
+        //线宽
+        strokeWidth: 5
+      }));
+      //视角飞行
+      viewer.flyTo(dataSource);
+    }
+    </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right" style="width: 116px;">
+    <form class="layui-form" action="">
+        <div class="sample-button-panel">
+            <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="along()">线插值分析</button>
+        </div>
+    </form>
+</div>
+</body>
+</html>

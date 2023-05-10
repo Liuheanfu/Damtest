@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>路径图-公交路线</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--引入echarts-->
+  <script type="text/javascript" src="http://localhost:8080/static/libs/cdn/overlay/echarts/echarts.min.js"></script>
+  <!--配合echarts引入文件-->
+  <script src="http://localhost:8080/static/libs/cdn/overlay/EchartsLayer.js" type="module"></script>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer = null;
+      // 数据
+      let busLines = null;
+      //echarts实例
+      let layer = null;
+
+      //初始化
+      function init() {
+          //地图初始化
+          initMap();
+          //echarts
+          initEcharts();
+      }
+
+      //地图初始化
+      function initMap() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          // 蓝色背景
+          let blueImage = new Cesium.UrlTemplateImageryProvider({
+              url:
+                  "https://map.geoq.cn/arcgis/rest/services/ChinaOnlineStreetPurplishBlue/MapServer/tile/{z}/{y}/{x}",
+              tilingScheme: new Cesium.WebMercatorTilingScheme(),
+              maximumLevel: 8,
+          });
+          viewer.imageryLayers.addImageryProvider(blueImage);
+          // 相机位置
+          let center = Cesium.Cartesian3.fromDegrees(116, 40, 200000.0);
+          viewer.scene.camera.setView({
+              destination: center,
+          });
+      }
+
+      //echarts
+      function initEcharts() {
+          // options参数请参考百度echarts-options
+          // https://echarts.apache.org/zh/option.html#title
+          httpGetPromise("http://192.168.82.89:8200/Vector/json/line/line-bus.json").then(data => {
+              // 遍历数据并处理成对应echarts格式
+              let hStep = 300 / (data.length - 1);
+              busLines = [].concat.apply(
+                  [],
+                  data.map(function (busLine, idx) {
+                      let prevPt;
+                      let points = [];
+                      for (let i = 0; i < busLine.length; i += 2) {
+                          let pt = [busLine[i], busLine[i + 1]];
+                          if (i > 0) {
+                              pt = [prevPt[0] + pt[0], prevPt[1] + pt[1]];
+                          }
+                          prevPt = pt;
+
+                          points.push([pt[0] / 1e4, pt[1] / 1e4]);
+                      }
+                      return {
+                          coords: points,
+                          lineStyle: {
+                              normal: {
+                                  color: echarts.color.modifyHSL(
+                                      "#5A94DF",
+                                      Math.round(hStep * idx)
+                                  ),
+                              },
+                          },
+                      };
+                  })
+              );
+              let option = {
+                  cesium: {
+                      roam: true,
+                  },
+                  animation: false,
+                  postRender: true,
+                  postRenderFrame: 2,
+                  series: [
+                      {
+                          type: "lines",
+                          coordinateSystem: "cesium", // 设置cesium坐标系
+                          polyline: true,
+                          data: busLines,
+                          silent: true,
+                          lineStyle: {
+                              normal: {
+                                  opacity: 0.2,
+                                  width: 1,
+                              },
+                          },
+                          progressiveThreshold: 500, // 一次渲染500点
+                          progressive: 200, // 渲染频率
+                      },
+                      {
+                          type: "lines",
+                          coordinateSystem: "cesium", // 设置cesium坐标系
+                          polyline: true,
+                          data: busLines,
+                          lineStyle: {
+                              normal: {
+                                  width: 0,
+                              },
+                          },
+                          effect: {
+                              constantSpeed: 20,
+                              show: true,
+                              trailLength: 0.1,
+                              symbolSize: 1.5,
+                          },
+                          zlevel: 1,
+                      },
+                  ],
+              };
+              // 声明cesium的echarts图层并将其显示到三维球上
+              layer = new window.EchartsLayer(viewer, option).addTo(viewer);
+          });
+      }
+
+      // 发送请求获取数据
+      function httpGetPromise(url) {
+          return new Promise(function (resolve, reject) {
+              const handler = function () {
+                  if (this.readyState !== 4) {
+                      return;
+                  }
+                  if (this.status === 200) {
+                      resolve(this.response);
+                  } else {
+                      reject(new Error(this.statusText));
+                  }
+              };
+              const client = new XMLHttpRequest();
+              client.open('GET', url);
+              client.onreadystatechange = handler;
+              client.responseType = 'json';
+              client.setRequestHeader('Accept', 'application/json');
+              client.send();
+          });
+      }
+
+  </script>
+</head>
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+</body>
+</html>

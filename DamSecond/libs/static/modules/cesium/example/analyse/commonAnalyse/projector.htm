@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>场景投放工具</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/tool.css"/>
+  <script>
+      "use strict";
+      //定义三维视图的主要类
+      let viewer, options, scenePro, sceneProaction, sceneProing, proType;
+
+      //地图初始化函数
+      function init() {
+          //初始化三维球体
+          initViewer();
+          //加载天地图
+          addTDT();
+          // 添加M3D模型
+          addModel();
+          //初始化示例UI
+          initUI();
+          // 添加点左事件，用于场景投放时确定起点和终点
+          initProjectorTool();
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer("mapgis-3d-viewer", {});
+      }
+
+      //加载天地图
+      function addTDT() {
+          options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          };
+          //添加卫星影像
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      //添加M3D模型
+      function addModel() {
+          viewer.scene.layers.appendM3DLayer("http://192.168.82.89:8200/3DData/ModelCache/M3D//1.0/景观示例/景观_建筑模型_1.mcj");
+      }
+
+      //初始化视屏投放工具
+      function initProjectorTool() {
+          let handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+          handler.setInputAction(function (movement) {
+              // 开启场景投放操作后点击事件才生效
+              if (sceneProaction && proType !== undefined && proType !== null) {
+                  var cartesian = viewer.scene.pickPosition(movement.position);
+                  if (cartesian !== undefined && !sceneProing) {
+                      // 第一次点击时，将拾取的坐标赋值给场景投放的观察点
+                      scenePro.viewPosition = cartesian;
+                      // 根据选择的投放内容，设置相应的投放资源路径
+                      switch (proType) {
+                          case Cesium.SceneProjectorType.IMAGE: {
+                              scenePro.textureSource =
+                                  "http://192.168.82.89:8200/NoneSpatialData/image/scenePro.png";
+                              break;
+                          }
+                          case Cesium.SceneProjectorType.VIDEO: {
+                              scenePro.textureSource =
+                                  "http://192.168.82.89:8200/NoneSpatialData/video/scenePro.mp4";
+                              break;
+                          }
+                          case Cesium.SceneProjectorType.HLS: {
+                              //仅支持 m3u8形式的链接, 因为需要逐帧将图片渲染到canvas上去
+                              scenePro.textureSource =
+                                  "http://192.168.82.89:8200/NoneSpatialData/video/scenePro.m3u8";
+                              break;
+                          }
+                          case Cesium.SceneProjectorType.COLOR: {
+                              scenePro.textureSource = new Cesium.Color(1, 0, 0, 1);
+                              break;
+                          }
+                      }
+                      sceneProing = true;
+                  } else {
+                      if (sceneProing && cartesian !== undefined) {
+                          // 第二次点击，将拾取的坐标赋值给场景投放的目标点，根据目标点及相关选项可以计算出投放目标区域
+                          scenePro.targetPosition = cartesian;
+                      }
+                      // 停止场景投放点击操作
+                      sceneProaction = false;
+                      sceneProing = false;
+                  }
+              }
+              // 更新渲染内容
+              viewer.scene.requestRender();
+          }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+      }
+
+      //初始化示例UI
+      function initUI() {
+          layui.use(function () {
+              var layer = layui.layer,
+                  $ = layui.jquery,
+                  form = layui.form;
+
+              //监听选择的场景投放的内容
+              form.on("select(content)", function (data) {
+                  proType = Cesium.SceneProjectorType[data.value];
+                  if(proType !== undefined && proType !== null) {
+                      // 新建场景投放对象
+                      scenePro = new Cesium.SceneProjector(
+                          proType, //场景投放的内容，颜色: COLOR、图片: IMAGE、MP4视频: VIDEO、HLS视频: HLS
+                          {
+                              showLine: true, //是否显示观察点到投放区域之间视锥的锥体线
+                              heightViewPosition: 10.0, //观察点高程
+                              hideVPInvisible: false, //观察点不可见时是否隐藏投放的内容
+                          }
+                      );
+                      // 将场景投放添加到地球上显示
+                      viewer.scene.visualAnalysisManager.add(scenePro);
+                      // 开启场景投放
+                      sceneProaction = true;
+                  }
+              });
+          });
+      }
+
+      function remove() {
+          // 移除场景投放结果
+          viewer.scene.visualAnalysisManager.removeAll();
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right" style="width: 352px;">
+  <form class="layui-form" action="">
+    <div class="sample-main-panel">
+      <div class="layui-form-item">
+        <label class="layui-form-label">投放内容</label>
+        <div class="layui-input-block">
+          <select lay-filter="content">
+            <option value="">请选择场景投放的内容</option>
+            <option value="COLOR">颜色</option>
+            <option value="IMAGE">图片</option>
+            <option value="VIDEO">MP4视频</option>
+            <option value="HLS">HLS视频</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="sample-button-panel">
+      <div class="layui-form-item">
+        <button type="button" class="layui-btn" onclick="remove()">
+          移除场景投放
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+</body>
+</html>

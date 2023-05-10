@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta charset='utf-8'/>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>M3D-分段专题图</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer, renderer_range;
+
+      //地图初始化函数
+      function init() {
+          //初始化三维球体
+          initViewer();
+          //设置专题图参数
+          setRender();
+          //添加M3D专题图
+          addM3DThemeLayer();
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+      }
+
+      //设置专题图参数
+      function setRender() {
+          //分段专题图参数
+          renderer_range = {
+              //专题图字段，楼层高度
+              field: "Floor",
+              //专题图类型-分段
+              type: "class-breaks",
+              //专题图着色参数
+              classBreakInfos: [{
+                  //分段最大值
+                  maxValue: 7,
+                  //分段最小值
+                  minValue: 1,
+                  //渲染符号
+                  symbol: {
+                      //渲染类型为M3D
+                      type: 'mesh-3d',
+                      //覆盖物图层
+                      symbolLayers: [{
+                          //图层类型-颜色填充
+                          type: "fill",
+                          //图层材质
+                          material: {
+                              //填充颜色
+                              color: Cesium.Color.ANTIQUEWHITE
+                          }
+                      }]
+                  }
+              }, {
+                  maxValue: 24,
+                  minValue: 8,
+                  symbol: {
+                      type: 'mesh-3d',
+                      symbolLayers: [{
+                          type: "fill",
+                          material: {
+                              color: Cesium.Color.CADETBLUE
+                          }
+                      }]
+                  }
+              }, {
+                  maxValue: 32,
+                  minValue: 25,
+                  symbol: {
+                      type: 'mesh-3d',
+                      symbolLayers: [{
+                          type: "fill",
+                          material: {
+                              color: new Cesium.Color(1.0, 0.0, 1.0, 0.7)
+                          }
+                      }]
+                  }
+              }, {
+                  maxValue: 48,
+                  minValue: 33,
+                  symbol: {
+                      type: 'mesh-3d',
+                      symbolLayers: [{
+                          type: "fill",
+                          material: {
+                              color: new Cesium.Color(0.0, 1.0, 0.0, 0.7)
+                          }
+                      }]
+                  }
+              }, {
+                  maxValue: 100,
+                  minValue: 49,
+                  symbol: {
+                      type: 'mesh-3d',
+                      symbolLayers: [{
+                          type: "fill",
+                          material: {
+                              color: new Cesium.Color(0.0, 0.7, 0.2, 0.7)
+                          }
+                      }]
+                  }
+              }, {
+                  maxValue: 1000,
+                  minValue: 100,
+                  symbol: {
+                      type: 'mesh-3d',
+                      symbolLayers: [{
+                          type: "fill",
+                          material: {
+                              color: new Cesium.Color(0.0, 0.2, 0.6, 0.4)
+                          }
+                      }]
+                  }
+              }]
+          }
+      }
+
+      //添加M3D专题图
+      function addM3DThemeLayer() {
+          let url = 'http://192.168.82.89:8089/igs/rest/services/Scene/武汉建筑轮廓白模/SceneServer';
+          //添加M3D白膜数据
+          viewer.scene.layers.appendSceneLayer(url, {
+              //设置render参数，渲染专题图
+              renderer: renderer_range
+          });
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+</body>
+
+</html>

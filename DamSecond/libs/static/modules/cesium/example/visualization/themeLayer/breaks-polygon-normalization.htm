@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>分段专题图</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      "use strict";
+      //定义三维视图的主要类
+      let viewer, options, dataSource, currentType, renderer;
+
+      //地图初始化函数
+      function init() {
+          //初始化三维球体
+          initViewer();
+          //加载天地图
+          addTDT();
+          //设置数据源
+          setDataSource();
+          //设置渲染类型
+          setRenderType();
+          //添加专题图
+          addThemeLayer();
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer("mapgis-3d-viewer", {});
+          //处理锯齿化
+          if (Cesium.FeatureDetection.supportsImageRenderingPixelated()) {
+              //判断是否支持图像渲染像素化处理
+              viewer.resolutionScale = window.devicePixelRatio;
+          }
+          //开启抗锯齿
+          viewer.scene.fxaa = true;
+          viewer.scene.postProcessStages.fxaa.enabled = true;
+      }
+
+      //加载天地图
+      function addTDT() {
+          let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      //设置数据源
+      function setDataSource() {
+          //设置数据源
+          dataSource = {};
+          dataSource.geoJSONData = {
+              point: "http://192.168.82.89:8200/Vector/json/metroStation.json",
+              line: "http://192.168.82.89:8200/Vector/json/metro.json",
+              area: "http://192.168.82.89:8200/Vector/json/populationSizeGeoJson_2017.json",
+          };
+      }
+
+      //设置渲染类型
+      function setRenderType() {
+          //设置当前渲染数据的类型
+          currentType = "geojson";
+          //设置专题图渲染类型
+          renderer = {
+              type: "class-breaks",
+              field: "zrk",
+              // 归一化字段类型
+              normalizationType: "field",
+              // 归一化字段名
+              normalizationField: "czrk",
+              // 默认符号
+              defaultSymbol: {
+                  type: "polygon-3d",
+                  symbolLayers: {
+                      //渲染为面
+                      type: "extrude",
+                      //开启阴影
+                      castShadows: true,
+                      //填充材料
+                      material: {color: new Cesium.Color.fromCssColorString('#B2DF8A').withAlpha(0.6)},
+                      //边界线
+                      outline: {
+                          color: new Cesium.Color.fromCssColorString('#B2DF8A'),
+                          width: 1.0,
+                      },
+                      //面累加高度值
+                      sizeField: "czrk",
+                      //面累加高度比例
+                      sizeRatio: 100,
+                  },
+              },
+              defaultLabel: "其他",
+              classBreakInfos: [
+                  {
+                      maxValue: 1.5,
+                      minValue: 0,
+                      symbol: {
+                          type: "polygon-3d",
+                          symbolLayers: {
+                              type: "extrude",
+                              material: {color: new Cesium.Color.fromCssColorString('#82F7FE').withAlpha(0.6)},
+                              outline: {
+                                  color: new Cesium.Color.fromCssColorString('#82F7FE'),
+                                  width: 1.0,
+                              },
+                              sizeField: "czrk",
+                              sizeRatio: 100,
+                          },
+                      },
+                  },
+              ],
+          };
+      }
+
+      //渲染专题图
+      function addThemeLayer() {
+          // 清空所有geojson图层
+          viewer.scene.layers.removeAllGeojsonLayers();
+
+          let options = {
+              //自动刷新
+              autoReset: true,
+              //加载全部要素
+              loadAll: true,
+              //图层下标回调
+              getDocLayerIndexes: function (indexs) {
+              },
+              //加载图层回调
+              loaded: function (layerInfo) {
+                  console.log("沙盒回调loaded获取到的layerInfo", layerInfo);
+              },
+              //渲染器
+              renderer: renderer,
+          };
+          let {geoJSONData} = dataSource;
+          let keys = Object.keys(geoJSONData);
+          keys.forEach((key) => {
+              let url = geoJSONData[key];
+              options.url = url;
+              //添加geojson图层
+              viewer.scene.layers.appendGeojsonLayer(url, options);
+          });
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+</body>
+</html>

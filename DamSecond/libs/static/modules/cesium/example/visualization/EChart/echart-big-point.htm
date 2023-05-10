@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>散点图-纽约热力</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--引入echarts-->
+  <script type="text/javascript" src="http://localhost:8080/static/libs/cdn/overlay/echarts/echarts.min.js"></script>
+  <!--配合echarts引入文件-->
+  <script type="text/javascript" src="http://localhost:8080/static/libs/cdn/overlay/echarts/echartsgl.min.js"></script>
+  <script src="http://localhost:8080/static/libs/cdn/overlay/EchartsLayer.js" type="module"></script>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer = null;
+      //echarts实例
+      let layer = null;
+      // 数据一共19片
+      let CHUNK_COUNT = 19;
+
+      //初始化
+      function init() {
+          //地图初始化
+          initMap();
+          //echarts
+          initEcharts();
+      }
+
+      // 地图初始化
+      function initMap() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          // 蓝色背景
+          let blueImage = new Cesium.UrlTemplateImageryProvider({
+              url:
+                  "https://map.geoq.cn/arcgis/rest/services/ChinaOnlineStreetPurplishBlue/MapServer/tile/{z}/{y}/{x}",
+              tilingScheme: new Cesium.WebMercatorTilingScheme(),
+              maximumLevel: 12,
+          });
+          viewer.imageryLayers.addImageryProvider(blueImage);
+          // 相机位置
+          let center = Cesium.Cartesian3.fromDegrees(
+              -73.94327099998152,
+              40.76737600240287,
+              30000.0
+          );
+          viewer.scene.camera.setView({
+              destination: center,
+          });
+      }
+
+      // 循环请求对应的网络数据，数据格式是Int32Array,并解析对应的二级制流
+      function fetchData(idx) {
+          if (idx >= CHUNK_COUNT) {
+              return;
+          }
+          let dataURL = `http://192.168.82.89:8200/Vector/bin/bigPoint/data_${idx}.bin`;
+          httpGetPromise(dataURL).then(res => {
+              let data = new Float32Array(res);
+              layer.chart.appendData({
+                  seriesIndex: 0,
+                  data: data,
+              });
+          })
+          fetchData(idx + 1);
+      }
+
+      function initEcharts() {
+          // options参数请参考百度echarts-options
+          // https://echarts.apache.org/zh/option.html#title
+          let option = {
+              title: {
+                  top: "10px",
+                  text: "140万纽约出租车",
+                  subtext: "数据来自纽约出租车以及Uber",
+                  left: "center",
+                  textStyle: {
+                      color: "#fff",
+                  },
+                  subtextStyle: {
+                      color: "#fff",
+                  },
+              },
+              cesium: {
+                  roam: true,
+              },
+              animation: false,
+              postRender: true,
+              series: [
+                  {
+                      type: "scatterGL",
+                      progressive: 2000, // 一次渲染20000点
+                      coordinateSystem: "cesium", // 设置cesium坐标系
+                      symbolSize: 0.5,
+                      blendMode: "lighter",
+                      large: true,
+                      itemStyle: {
+                          color: "#FF0000",
+                      },
+                      postEffect: {
+                          enable: true,
+                      },
+                      silent: true,
+                      dimensions: ["lng", "lat"],
+                      data: new Float32Array(), // 关键点： 数据必须处理成Float32Array格式，否则超出浏览器内存
+                  },
+              ],
+          };
+          // 声明cesium的echarts图层并将其显示到三维球上
+          layer = new window.EchartsLayer(viewer, option).addTo(viewer);
+          fetchData(0);
+      }
+
+      // 发送请求获取数据
+      function httpGetPromise(url) {
+          return new Promise(function (resolve, reject) {
+              const handler = function () {
+                  if (this.readyState !== 4) {
+                      return;
+                  }
+                  if (this.status === 200) {
+                      resolve(this.response);
+                  } else {
+                      reject(new Error(this.statusText));
+                  }
+              };
+              const client = new XMLHttpRequest();
+              client.open('GET', url);
+              client.onreadystatechange = handler;
+              // 数据类型arraybuffer
+              client.responseType = 'arraybuffer';
+              client.send();
+          });
+      }
+
+  </script>
+</head>
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+</body>
+</html>

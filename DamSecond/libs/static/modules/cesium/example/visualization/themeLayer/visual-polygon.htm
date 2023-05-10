@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>视觉变量分段专题图</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/visual.css"/>
+  <script>
+      "use strict";
+      //定义三维视图的主要类
+      let viewer, options, dataSource, currentType, renderer;
+
+      //地图初始化函数
+      function init() {
+          //初始化三维球体
+          initViewer();
+          //加载天地图
+          addTDT();
+          //设置数据源
+          setDataSource();
+          //设置渲染类型
+          setRenderType();
+          //添加专题图
+          addThemeLayer();
+          //初始化示例UI
+          initUI();
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer("mapgis-3d-viewer", {});
+          //处理锯齿化
+          if (Cesium.FeatureDetection.supportsImageRenderingPixelated()) {
+              //判断是否支持图像渲染像素化处理
+              viewer.resolutionScale = window.devicePixelRatio;
+          }
+          //开启抗锯齿
+          viewer.scene.fxaa = true;
+          viewer.scene.postProcessStages.fxaa.enabled = true;
+      }
+
+      //加载天地图
+      function addTDT() {
+          let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      //设置数据源
+      function setDataSource() {
+          //设置数据源
+          dataSource = {};
+          dataSource.geoJSONData = {
+              area: "http://192.168.82.89:8200/Vector/json/populationSizeGeoJson_2017.json",
+          };
+      }
+
+      //设置渲染类型
+      function setRenderType() {
+          //设置当前渲染数据的类型
+          currentType = "geojson";
+          //设置专题图渲染类型
+          renderer = {
+              //设置分段专题图
+              type: "class-breaks",
+              //设置属性字段
+              field: "zrk",
+              //设置默认符号
+              defaultSymbol: {
+                  //符号类型为3d面
+                  type: "polygon-3d",
+                  //符号图层
+                  symbolLayers: {
+                      //填充类型
+                      type: "fill",
+                      //填充材料
+                      material: {color: new Cesium.Color.fromCssColorString('#2578B4').withAlpha(0.6)},
+                      //外边线
+                      outline: {
+                          color: new Cesium.Color.fromCssColorString('#2578B4'),
+                          width: 1.0,
+                      },
+                  },
+              },
+              defaultLabel: "标签",
+              //设置视觉变量
+              visualVariables: [
+                  {
+                      //视觉变量类型
+                      type: "opacity",
+                      //属性字段
+                      field: "zrk",
+                      //分段设置透明度
+                      stops: [
+                          {value: 100, color: new Cesium.Color.fromCssColorString('#B2DF8A').withAlpha(0.8)},
+                          {value: 125, color: new Cesium.Color.fromCssColorString('#B2DF8A').withAlpha(0.5)},
+                          {value: 150, color: new Cesium.Color.fromCssColorString('#B2DF8A').withAlpha(0.2)},
+                      ],
+                  },
+              ],
+          };
+      }
+
+      //渲染专题图
+      function addThemeLayer() {
+          // 清空所有geojson图层
+          viewer.scene.layers.removeAllGeojsonLayers();
+
+          let options = {
+              //自动刷新
+              autoReset: true,
+              //加载全部要素
+              loadAll: true,
+              //图层下标回调
+              getDocLayerIndexes: function (indexs) {
+              },
+              //加载图层回调
+              loaded: function (layerInfo) {
+                  console.log("沙盒回调loaded获取到的layerInfo", layerInfo);
+              },
+              //渲染器
+              renderer: renderer,
+          };
+          let {geoJSONData} = dataSource;
+          let keys = Object.keys(geoJSONData);
+          keys.forEach((key) => {
+              let url = geoJSONData[key];
+              options.url = url;
+              //添加geojson图层
+              viewer.scene.layers.appendGeojsonLayer(url, options);
+          });
+      }
+
+      //初始化示例UI
+      function initUI() {
+          layui.use(function () {
+              var layer = layui.layer,
+                  $ = layui.jquery,
+                  form = layui.form;
+
+              //监听选择框
+              form.on("select(visual)", function (data) {
+                  if (data.value === "opacity") {
+                      //视觉变量设置
+                      //透明度视觉变量
+                      renderer.visualVariables = [
+                          {
+                              //视觉变量类型
+                              type: "opacity",
+                              //属性字段
+                              field: "zrk",
+                              //分段设置透明度
+                              stops: [
+                                  {value: 100, color: new Cesium.Color.fromCssColorString('#B2DF8A').withAlpha(0.8)},
+                                  {value: 125, color: new Cesium.Color.fromCssColorString('#B2DF8A').withAlpha(0.5)},
+                                  {value: 150, color: new Cesium.Color.fromCssColorString('#B2DF8A').withAlpha(0.2)},
+                              ],
+                          },
+                      ];
+                  } else if (data.value === "color") {
+                      renderer.visualVariables = [
+                          {
+                              //视觉变量类型
+                              type: "color",
+                              //属性字段
+                              field: "zrk",
+                              //分段设置颜色
+                              stops: [
+                                  {value: 100, color: new Cesium.Color.fromCssColorString('#6A3D9B').withAlpha(0.6)},
+                                  {value: 125, color: new Cesium.Color.fromCssColorString('#82F7FE').withAlpha(0.6)},
+                                  {value: 150, color: new Cesium.Color.fromCssColorString('#4CA12E').withAlpha(0.6)},
+                              ],
+                          },
+                      ];
+                  }
+                  //更新专题图
+                  requestThemeRender();
+              });
+          });
+
+      }
+
+      //更新专题图
+      function requestThemeRender() {
+          // 清空所有要素图层和geojson图层
+          viewer.scene.layers.removeAllFeatureLayers();
+          viewer.scene.layers.removeAllGeojsonLayers();
+
+          let options = {
+              //自动刷新
+              autoReset: true,
+              //加载全部要素
+              loadAll: true,
+              //图层下标回调
+              getDocLayerIndexes: function (indexs) {},
+              //加载图层回调
+              loaded: function (layerInfo) {
+                  console.log("沙盒回调loaded获取到的layerInfo", layerInfo);
+              },
+              //渲染器
+              renderer: renderer,
+          };
+          if (currentType === "geojson") {
+              let { geoJSONData } = dataSource;
+              let keys = Object.keys(geoJSONData);
+              keys.forEach((key) => {
+                  let url = geoJSONData[key];
+                  options.url = url;
+                  //添加geojson图层
+                  viewer.scene.layers.appendGeojsonLayer(url, options);
+              });
+          } else {
+              let { javaData } = dataSource;
+              let keys = Object.keys(javaData);
+              keys.forEach((key) => {
+                  let url = javaData[key];
+                  options.url = url;
+                  //添加feature图层
+                  viewer.scene.layers.appendFeatureLayer(url, options);
+              });
+          }
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right">
+  <form class="layui-form layui-form-pane" action="">
+    <div class="sample-main-panel" style="margin-bottom: 0;border: none;height: 40px;">
+      <label>视觉变量</label>
+      <div class="layui-input-block">
+        <select name="visual" lay-filter="visual">
+          <option value="opacity" selected="">透明度</option>
+          <option value="color">颜色</option>
+        </select>
+      </div>
+    </div>
+  </form>
+</div>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+  <title>点数据播放</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--引入mapv-->
+  <script type="text/javascript" src="http://localhost:8080/static/libs/cdn/overlay/mapv/mapv.min.js"></script>
+  <!--配合echarts引入文件-->
+  <script src="http://localhost:8080/static/libs/cdn/overlay/MapvLayer.js" type="module"></script>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      'use strict';
+      // 定义三维视图的主要类
+      let viewer = null;
+
+      function initMapVData(){
+
+          httpGetPromise('http://192.168.82.89:8200/Vector/json/pointAnimate/china-point.json').then((rs)=>{
+              let data = [];
+              for (var i = 0; i < rs[0].length; i++) {
+                  let geoCoord = rs[0][i].geoCoord;
+                  data.push({
+                      geometry: {
+                          type: "Point",
+                          coordinates: geoCoord,
+                      },
+                      time: Math.random() * 10,
+                  });
+              }
+              // 构建对应的dataset
+              let dataSet = new mapv.DataSet(data);
+
+              // 设置对应的参数
+              let options = {
+                  context: "2d", //cesium必须设置画布为2d
+                  cesium: {
+                      postRender: true,
+                      postRenderFrame: 15,
+                  },
+                  fillStyle: "rgba(255, 250, 50, 0.6)",
+                  //shadowColor: 'rgba(255, 250, 50, 0.5)',
+                  //shadowBlur: 3,
+                  updateCallback: function (time) {
+                  },
+                  size: 3,
+                  draw: "simple",
+                  animation: {
+                      type: "time",
+                      stepsRange: {
+                          start: 0,
+                          end: 10,
+                      },
+                      size: 3,
+                      draw: "simple",
+                      animation: {
+                          type: "time",
+                          stepsRange: {
+                              start: 0,
+                              end: 10,
+                          },
+                          trails: 1,
+                          duration: 6,
+                      },
+                  },
+              };
+              // 声明cesium的mapv图层并将其显示到三维球上
+              new window.MapvLayer(
+                  viewer,
+                  dataSet,
+                  options
+              );
+          });
+      }
+
+      function init(){
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          // 蓝色背景
+          let blueImage = new Cesium.UrlTemplateImageryProvider({
+              url: "https://map.geoq.cn/arcgis/rest/services/ChinaOnlineStreetPurplishBlue/MapServer/tile/{z}/{y}/{x}",
+              tilingScheme: new Cesium.WebMercatorTilingScheme(),
+              maximumLevel: 18,
+          });
+          viewer.imageryLayers.addImageryProvider(blueImage);
+          initMapVData();
+      }
+
+      // 发送请求获取数据
+      function httpGetPromise(url) {
+          return new Promise(function (resolve, reject) {
+              const handler = function () {
+                  if (this.readyState !== 4) {
+                      return;
+                  }
+                  if (this.status === 200) {
+                      resolve(this.response);
+                  } else {
+                      reject(new Error(this.statusText));
+                  }
+              };
+              const client = new XMLHttpRequest();
+              client.open('GET', url);
+              client.onreadystatechange = handler;
+              client.responseType = 'json';
+              client.setRequestHeader('Accept', 'application/json');
+              client.send();
+          });
+      }
+
+  </script>
+</head>
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+</body>
+</html>

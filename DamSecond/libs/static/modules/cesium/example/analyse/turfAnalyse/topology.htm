@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset='utf-8'/>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>求交判断</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--turf.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/turf/turf.min.js"></script>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/analyse.css"/>
+  <script>
+  'use strict';
+  let viewer;
+  let dataSource;
+  //GeoJson1
+  let poly1;
+  //GeoJson2
+  let poly2;
+  //求交判断geoJson
+  let geoJson;
+  //原始数据多边形1
+  let originData1 = [
+    [-122.801742, 45.48565],
+    [-122.801742, 45.60491],
+    [-122.584762, 45.60491],
+    [-122.584762, 45.48565],
+    [-122.801742, 45.48565]
+  ];
+  //多边形2
+  let originData2 = [
+    [-122.520217, 45.535693],
+    [-122.64038, 45.553967],
+    [-122.720031, 45.526554],
+    [-122.669906, 45.507309],
+    [-122.723464, 45.446643],
+    [-122.532577, 45.408574],
+    [-122.487258, 45.477466],
+    [-122.520217, 45.535693]
+  ];
+
+  //初始化
+  function init() {
+    //地图初始化
+    initMap();
+    //加载原始的点数据
+    loadOriginData();
+  }
+
+  //地图初始化
+  function initMap() {
+    //构造三维视图类（视图容器div的id，三维视图设置参数）
+    viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+    //加载天地图
+    addTDT();
+    //设置相机位置
+    setCamera();
+  }
+
+  //加载天地图
+  function addTDT() {
+    let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          };
+          //添加卫星影像
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+  }
+
+  //设置相机位置
+  function setCamera() {
+    //相机的最终位置
+    let destination = Cesium.Cartesian3.fromDegrees(-122.701742, 45.48565, 100000.0);
+    viewer.scene.camera.setView({
+      destination: destination
+    });
+  }
+
+  //加载基础数据效果
+  function loadOriginData() {
+    //显示多边形
+    poly1 = addOriginSource(originData1, Cesium.Color.RED.withAlpha(0.5));
+    poly2 = addOriginSource(originData2, Cesium.Color.BLUE.withAlpha(0.5));
+  }
+
+  // 加载多边形
+  function addOriginSource(originData, color) {
+    //坐标数组换成GeoJson
+    let poly = turf.polygon([originData]);
+    //添加显示
+    let originDataSource = viewer.dataSources.add(Cesium.GeoJsonDataSource.load(poly, {
+      //填充色
+      fill: color,
+      //线宽
+      strokeWidth: 5
+    }));
+    return poly;
+  }
+
+  //点击求交判断分析
+  function intersect() {
+    intersectSource().then(res => {
+      //保存结果资源，移除时使用
+      dataSource = res
+    });
+  }
+
+  //求交判断分析
+  function intersectSource() {
+    //先移除之前的分析结果
+    if (dataSource) {
+      viewer.dataSources.remove(dataSource);
+    }
+    //求交判断函数
+    geoJson = turf.intersect(poly1, poly2);
+    //显示求交判断分析结果
+    let source = viewer.dataSources.add(Cesium.GeoJsonDataSource.load(geoJson, {
+      //填充色
+      fill: Cesium.Color.fromBytes(255, 255, 255, 210),
+      //线宽
+      strokeWidth: 5
+    }));
+    return source;
+  }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right" style="width: 130px;">
+  <form class="layui-form" action="">
+    <div class="sample-button-panel">
+      <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="intersect()">求交判断分析</button>
+    </div>
+  </form>
+</div>
+</body>
+</html>

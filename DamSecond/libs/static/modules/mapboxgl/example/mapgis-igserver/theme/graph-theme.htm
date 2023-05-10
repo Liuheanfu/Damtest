@@ -1,0 +1,258 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>统计专题图</title>
+    <script include="jquery" src="./static/libs/include-lib-local.js"></script>
+    <script include="mapboxgl" src="./static/libs/include-mapboxgl-local.js"></script>
+    <link href="./static/modules/mapboxgl/example/style.css" rel="stylesheet" type="text/css" />
+    <style>
+        .mapboxgl-ctrl-icon {
+            background-position: 50% 50%;
+            background-repeat: no-repeat;
+            background-size: 60%;
+        }
+
+        .mapboxgl-ctrl-icon.mapboxgl-ctrl-add {
+            background-image: url('data:image/svg+xml;utf8,<svg t="1594093104250" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4905"><path d="M789.994 771.154L459.266 670.616l295.152-343.032-380.88 318.478L64.28 553.82l896.008-427.218-170.294 644.552z m-341.168 127.42v-177.38l108.868 30.812-108.868 146.568z" p-id="4906"></path></svg>');
+        }
+
+        .mapboxgl-ctrl-icon.mapboxgl-ctrl-update {
+            background-image: url('data:image/svg+xml;utf8,<svg t="1594090532673" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1150"><path d="M512 269.922592l0 121.038704 161.384597-161.384597L512 68.191078l0 121.038704c-178.330548 0-322.770218 144.43967-322.770218 322.770218 0 63.343677 18.559705 122.047684 50.02944 171.874509l58.905598-58.905598c-17.953907-33.689287-28.242228-72.018244-28.242228-112.969934C269.922592 378.251833 378.251833 269.922592 512 269.922592zM784.740778 340.124468l-58.905598 58.905598c17.953907 33.689287 28.242228 72.018244 28.242228 112.969934 0 133.748167-108.329241 242.077408-242.077408 242.077408L512 633.038704 350.614379 794.423301l161.384597 161.384597L511.998977 834.770218c178.330548 0 322.770218-144.43967 322.770218-322.770218C834.770218 448.656323 816.210513 389.952316 784.740778 340.124468z" p-id="1151"></path></svg>');
+        }
+
+        .mapboxgl-ctrl-icon.mapboxgl-ctrl-delete {
+            background-image: url('data:image/svg+xml;utf8,<svg t="1594092749945" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4754"><path d="M517.59 21.609c-100.299 0-181.703 79.514-185.167 179.34H98.603c-25.979 0-47.235 21.099-47.235 47.236 0 25.98 21.099 47.237 47.236 47.237h52.117v528.416c0 99.196 67.233 180.285 150.37 180.285h423.55c82.98 0 150.37-80.616 150.37-180.285V295.737h47.236c25.98 0 47.236-21.1 47.236-47.237 0-25.98-21.099-47.236-47.236-47.236H702.441C699.449 101.124 617.888 21.61 517.59 21.61z m-96.677 179.34c3.464-51.172 45.19-90.85 96.834-90.85s93.37 39.835 96.362 90.85H420.913z m-119.98 714.842c-29.444 0-61.88-37.789-61.88-91.953V295.737h547.311V824.31c0 54.007-32.436 91.954-61.88 91.954H300.933v-0.473z m0 0" p-id="4755"></path><path d="M364.387 802.267c21.57 0 39.363-21.571 39.363-48.653V476.022c0-27.082-17.635-48.654-39.363-48.654-21.572 0-39.364 21.572-39.364 48.654v277.592c0 26.924 17.32 48.653 39.364 48.653z m142.496 0c21.571 0 39.363-21.571 39.363-48.653V476.022c0-27.082-17.635-48.654-39.363-48.654-21.571 0-39.364 21.572-39.364 48.654v277.592c0 26.924 17.793 48.653 39.364 48.653z m149.896 0c21.571 0 39.364-21.571 39.364-48.653V476.022c0-27.082-17.635-48.654-39.364-48.654-21.571 0-39.363 21.572-39.363 48.654v277.592c0 26.924 17.162 48.653 39.363 48.653z m0 0" p-id="4756"></path></svg>');
+        }
+    </style>
+    <script type="text/javascript">
+        //使用严格模式
+        "use strict";
+        //定义地图文档图层和地图
+        var mapDocLayer, map;
+        //专题图操作对象
+        var ThemeOper;
+        //专题图信息数组
+        var themesInfoArr;
+        //地图文档guid
+        var guid;
+        var { protocol, ip, port } = window.webclient;
+
+        /** 地图初始化
+         */
+        function init() {
+            //随机生成一个guid
+            guid = Math.floor(Math.random() * 10000000).toString();
+            //地图容器
+            map = new mapboxgl.Map({
+                container: 'map',
+                minZoom: 3,
+                zoom: 6,
+                center: [112.247175, 30.152892]
+            });
+            var navigationControl = new mapboxgl.NavigationControl();
+            map.addControl(navigationControl, 'top-left');
+            mapDocLayer = new mapboxgl.Zondy.Map.MapDocLayer("Hubei3857", {
+                //IP地址
+                ip: `${ip}`,
+                //端口号
+                port: `${port}`,
+                //只显示一个图层,不平铺显示
+                noWrap: true
+            });
+            mapDocLayer.addToMap(map);
+            //注册鼠标移动事件
+            map.on('mousemove', function (e) {
+                //经纬度坐标转web墨卡托
+                const earthRad = 6378137.0;
+                const x = e.lngLat.lng * Math.PI / 180 * earthRad;
+                const a = e.lngLat.lat * Math.PI / 180;
+                const y = earthRad / 2 * Math.log((1.0 + Math.sin(a)) / (1.0 - Math.sin(a)));
+                document.getElementById('mouse-position').innerHTML = "X轴：" + x.toFixed(2) + "，Y轴：" + y.toFixed(2);
+            });
+
+            var html = '<div class="mapboxgl-ctrl mapboxgl-ctrl-group">' +
+                '<button class="mapboxgl-ctrl-icon mapboxgl-ctrl-add" type="button" title="添加专题图" onclick="addChartThemesInfo()" aria-label="add"></button>' +
+                '<button class="mapboxgl-ctrl-icon mapboxgl-ctrl-update" type="button" title="更新专题图" onclick="updateTheme()" aria-label="update"></button>' +
+                '<button class="mapboxgl-ctrl-icon mapboxgl-ctrl-delete" type="button" title="删除专题图" onclick="deleteTheme()" aria-label="delete"></button>' +
+                '</div>';
+            $(".mapboxgl-ctrl-top-right").append(html);
+        }
+
+        /** 设置专题图默认参数
+         */
+        function getDefaultThemesInfo() {
+            //专题图信息数组
+            var themesInfoArr = [];
+            //初始化Zondy.Object.Theme.ThemesInfo，用于设置需添加的专题相关信息
+            themesInfoArr[0] = new Zondy.Object.Theme.ThemesInfo();
+            //设置图层名层
+            themesInfoArr[0].LayerName = "湖北省市级区划1";
+            //初始化指定图层的专题图信息对象，之后再给该数组赋值
+            themesInfoArr[0].ThemeArr = [];
+            //实例化CChartTheme类
+            themesInfoArr[0].ThemeArr[0] = new Zondy.Object.Theme.CChartTheme();
+            //专题图名称
+            themesInfoArr[0].ThemeArr[0].Name = "统计专题图";
+            themesInfoArr[0].ThemeArr[0].ChartType = Zondy.Object.Theme.CChartType.Bar3D;
+            //ChartThemeInfoArr设置
+            //设置指定专题图的专题信息，专题图可以有多个专题信息
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr = [];
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[0] = new Zondy.Object.Theme.CChartThemeInfo();
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[0].Expression = "GDP2016";
+            //必须要填写,否则会出错dcserver会挂掉
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[0].Caption = "GDP2016";
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[0].IsVisible = true;
+            //实例化CRegInfo类
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[0].RegInfo = new Zondy.Object.Theme.CRegInfo();
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[0].RegInfo.Angle = 0;
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[0].RegInfo.EndClr = 0;
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[0].RegInfo.FillClr = 81;
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[0].RegInfo.FillMode = 0;
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[0].RegInfo.FullPatFlg = true;
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[0].RegInfo.PatClr = 3;
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[0].RegInfo.PatHeight = 5;
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[0].RegInfo.PatWidth = 5;
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[0].RegInfo.OutPenW = 1;
+
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[1] = new
+                Zondy.Object.Theme.CChartThemeInfo();
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[1].Expression = "GDP2015";
+            //必须要填写,否则会出错dcserver会挂掉
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[1].Caption = "GDP2015";
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[1].IsVisible = true;
+            //实例化CRegInfo类
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[1].RegInfo = new
+                Zondy.Object.Theme.CRegInfo();
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[1].RegInfo.Angle = 0;
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[1].RegInfo.EndClr = 0;
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[1].RegInfo.FillClr = 10;
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[1].RegInfo.FillMode = 0;
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[1].RegInfo.FullPatFlg = true;
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[1].RegInfo.PatClr = 10;
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[1].RegInfo.PatHeight = 5;
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[1].RegInfo.PatWidth = 5;
+            themesInfoArr[0].ThemeArr[0].ChartThemeInfoArr[1].RegInfo.OutPenW = 1;
+            //RepresentInfo设置
+            themesInfoArr[0].ThemeArr[0].RepresentInfo = new Zondy.Object.Theme.CChartThemeRepresentInfo();
+            themesInfoArr[0].ThemeArr[0].RepresentInfo.AnnInfoLabel = new Zondy.Object.Theme.CAnnInfo();
+            //标注(参数值)覆盖方式：覆盖
+            themesInfoArr[0].ThemeArr[0].RepresentInfo.AnnInfoLabel.Ovprnt = true;
+            //小数位数
+            themesInfoArr[0].ThemeArr[0].RepresentInfo.DigitLabel = 7;
+            //是否显示参数值
+            themesInfoArr[0].ThemeArr[0].RepresentInfo.IsDrawLabel = true;
+            //参数值类型：真实值
+            themesInfoArr[0].ThemeArr[0].RepresentInfo.FormatLabel = Zondy.Object.Theme.CChartLabelFormat.Value;
+            //直方图,折线图，点图属性设置
+            //最大高度
+            themesInfoArr[0].ThemeArr[0].RepresentInfo.MaxLength = 120;
+            //厚度
+            themesInfoArr[0].ThemeArr[0].RepresentInfo.ThickPersent = 10;
+            //直方图中的宽度或折线图中的横向间隔
+            themesInfoArr[0].ThemeArr[0].RepresentInfo.Width = 2;
+            //点图半径或折线图中的点半径
+            themesInfoArr[0].ThemeArr[0].RepresentInfo.PlotRadius = 1;
+            //饼图属性设置
+            //最小半径
+            themesInfoArr[0].ThemeArr[0].RepresentInfo.MinRadius = 2;
+            //角度
+            themesInfoArr[0].ThemeArr[0].RepresentInfo.PieTiltedAngle = 30;
+            //固定大小
+            themesInfoArr[0].ThemeArr[0].RepresentInfo.PieSizeFixFlag = 1;
+            return themesInfoArr
+        }
+
+        /** 添加专题图
+         */
+        function addChartThemesInfo() {
+            if (themesInfoArr) {
+                //删除专题图,onUniqueTheme为回调函数
+                ThemeOper.removeThemesInfo("Hubei3857", "1/0", onUniqueTheme);
+                themesInfoArr = null;
+            }
+            themesInfoArr = getDefaultThemesInfo();
+            //显示进度条
+            startPressBar();
+            //给指定地图文档指定图层添加专题图
+            ThemeOper = new Zondy.Service.ThemeOper(guid);
+            //设置ip地址
+            ThemeOper.ip = `${ip}`;
+            //设置端口号
+            ThemeOper.port = `${port}`;
+            //添加专题图（不是在原文档上添加，会重新生成一个专题图缓存文档）
+            ThemeOper.addThemesInfo("Hubei3857", "1/0", themesInfoArr, onUniqueTheme);
+        }
+
+        /** 更新专题图
+         */
+        function updateTheme() {
+            //显示进度条
+            startPressBar();
+            themesInfoArr = getDefaultThemesInfo();
+            themesInfoArr[0].ThemeArr[0].ChartType = Zondy.Object.Theme.CChartType.Pie;
+            //更新专题图,onUniqueTheme为回调函数
+            ThemeOper.updateThemesInfo("Hubei3857", "1/0", themesInfoArr, onUniqueTheme);
+        }
+
+        /** 删除专题图
+         */
+        function deleteTheme() {
+            if (themesInfoArr) {
+                //显示进度条
+                startPressBar();
+                //删除专题图,onUniqueTheme为回调函数
+                ThemeOper.removeThemesInfo("Hubei3857", "1/0", onUniqueTheme);
+                themesInfoArr = null;
+            } else {
+                alert("已清除或者没有该专题图信息！");
+            }
+        }
+
+        /** 调用专题图服务成功回调
+         *  @param {json对象} flg 获取结果对象
+         */
+        function onUniqueTheme(flg) {
+            //停止进度条
+            stopPressBar();
+            if (flg) {
+                //刷新图层前要进行此设置。加载之前的缓存文档,保证专题图能正常显示
+                mapDocLayer.options.keepCache = false;
+                //刷新图层，实时显示专题图
+                mapDocLayer.refreshMap(guid);
+                //设置为读取缓存，以加快显示效率
+                mapDocLayer.options.keepCache = true;
+            } else {
+                return false;
+            }
+        }
+
+        /** 开始进度条动画
+         */
+        function startPressBar() {
+            document.getElementById('preview').style.display = "";
+        }
+
+        /** 停止进度条动画
+         */
+        function stopPressBar() {
+            document.getElementById('preview').style.display = "none";
+        }
+    </script>
+</head>
+
+<body onload="init();">
+    <div id="preview"
+        style="display: none; text-align: center; padding-top: 250px; font-weight: bold;position: absolute;background: rgba(3, 3, 3, 0.1);color: #fff;float: left; width: 100%;height: 100%;-webkit-border-radius: 10px;-moz-border-radius: 10px;border-radius: 10px;z-index: 20000;">
+        <img src="./static/assets/graphic-image/39-1.gif" alt='' /><br />
+        <br />
+        <span>正在操作，请稍候</span>
+    </div>
+    <div id="map" style="width: 100%; height:700px;">
+        <div id="mouse-position">
+        </div>
+    </div>
+</body>
+
+</html>

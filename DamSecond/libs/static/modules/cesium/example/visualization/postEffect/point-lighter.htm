@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+  <title>点光源</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css" />
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css" />
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/visual.css" />
+  <script>
+      'use strict';
+      //取得jquery对象
+      var $ = layui.$;
+      //颜色管理器对象
+      var colorpicker = layui.colorpicker;
+      let slider = layui.slider;
+      // 定义三维视图的主要类
+      var viewer = null;
+      var scene
+      // 定义平行光对象
+      var pointLight;
+      var transformEditor;
+      var lightModel;
+
+      function init() {
+          //初始化三维球体
+          initViewer();
+          // 添加模型数据
+          addM3D();
+          //初始化示例UI
+          initUI();
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          //构造三维视图类
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          scene = viewer.scene;
+      }
+
+      // 添加模型数据
+      function addM3D() {
+          let url = 'http://192.168.82.89:8089/igs/rest/services/Scene/高级住所模型/SceneServer';
+          viewer.scene.layers.appendSceneLayer(url, {
+              duration: 2,
+              autoReset: true,
+          });
+      }
+
+      function addLightModel(lightPos) {
+          // 向场景中添加一个小球代表点光源，方便交互编辑光源位置
+          var modelMatrix = Cesium.Transforms.headingPitchRollToFixedFrame(lightPos, new Cesium.HeadingPitchRoll());
+          lightModel = scene.primitives.add(
+              new Cesium.Primitive({
+                  geometryInstances: new Cesium.GeometryInstance({
+                      geometry: new Cesium.EllipsoidGeometry({
+                          radii: new Cesium.Cartesian3(3.0, 3.0, 3.0)
+                      }),
+                      attributes: {
+                          color: Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.WHITE)
+                      }
+                  }),
+                  appearance: new Cesium.PerInstanceColorAppearance({
+                      closed: true
+                  }),
+                  modelMatrix: modelMatrix,
+              })
+          );
+
+          // 创建模型编辑工具
+          transformEditor = new Cesium.ModelEditor({
+              container: viewer.container,
+              scene: viewer.scene,
+              transform: lightModel.modelMatrix,
+              boundingSphere: new Cesium.BoundingSphere(new Cesium.Cartesian3(), 20),
+          });
+
+          // 设置模型编辑工具模式为平移模式,并激活编辑工具
+          var viewModel = transformEditor.viewModel;
+          viewModel.setModeTranslation();
+          viewModel.activate();
+      }
+
+      // 添加光源
+      function addLightBtnClicked() {
+          // 移除上一次添加的光源
+          removeLightBtnClicked();
+
+          // 监听鼠标点击事件添加点光源
+          viewer.screenSpaceEventHandler.setInputAction(function (movement) {
+              // 在模型上拾取一个点并偏移,保证点光源距模型一定距离
+              var cartesian = viewer.scene.pickPosition(movement.position);
+              var cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+              cartesian = Cesium.Cartesian3.fromDegrees(Cesium.Math.toDegrees(cartographic.longitude), Cesium.Math.toDegrees(cartographic.latitude), cartographic.height + 30)
+
+              // 添加光源
+              pointLight = new Cesium.PointLight({ position: cartesian, intensity: 6, distance: 55, decay: 1.0, color: new Cesium.Color(1.0, 1.0, 1.0, 1.0) });
+              scene.addLight(pointLight);
+              // 添加点光源模型，方便交互移动位置
+              addLightModel(cartesian);
+              // 每一帧根据点光源模型位置更新点光源位置
+              scene.preUpdate.addEventListener(function () {
+                  var newPos = Cesium.Matrix4.getTranslation(lightModel.modelMatrix, new Cesium.Cartesian3());
+                  pointLight.position = newPos;
+              });
+
+              // 移除鼠标点击事件添加点光源
+              viewer.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_CLICK);
+          }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+      }
+
+      // 移除光源
+      function removeLightBtnClicked() {
+          // 移除点光源
+          scene.removeLight(pointLight);
+          // 移除方便交互移动光源的模型
+          scene.primitives.remove(lightModel);
+          // 移除模型编辑器
+          if (transformEditor) {
+              if (transformEditor.viewModel) {
+                  transformEditor.viewModel.deactivate();
+              }
+          }
+      }
+
+      //初始化示例UI
+      function initUI() {
+          //光源颜色
+          colorpicker.render({
+              elem: '#light-color'
+              , color: '#ffffff'
+              , done: function (color) {
+                  $('#light-color-input').val(color);
+                  if (Cesium.defined(pointLight))
+                      pointLight.color = Cesium.Color.fromCssColorString(color);
+              }
+          });
+          // 光源强度
+          slider.render({
+              elem: "#light-intensity",
+              value: 6.0,
+              min: 0.0,
+              max: 10.0,
+              step: 1,
+              theme: 'rgb(102 147 251)',
+              change: function (value) {
+                  pointLight.intensity = value;
+              },
+          });
+          // 光源衰减
+          slider.render({
+              elem: "#light-decay",
+              value: 1.0,
+              min: 0.0,
+              max: 10.0,
+              step: 1,
+              theme: 'rgb(102 147 251)',
+              change: function (value) {
+                  pointLight.decay = value;
+              },
+          });
+
+          // 光照距离
+          slider.render({
+              elem: "#light-distance",
+              value: 50.0,
+              min: 0.0,
+              max: 300.0,
+              step: 10,
+              theme: 'rgb(102 147 251)',
+              change: function (value) {
+                  pointLight.distance = value;
+              },
+          });
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right">
+  <form class="layui-form" action="">
+    <div class="sample-main-panel">
+      <div class="layui-form-item">
+        <label class="layui-form-label">光源颜色</label>
+        <div class="layui-input-inline">
+          <input disabled type="text" value="#ffffff" placeholder="光源颜色" class="layui-input"
+                 id="light-color-input">
+        </div>
+        <div class="layui-inline" style="left: -11px;">
+          <div id="light-color"></div>
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <div class="slideBarDiv">
+          光源强度<div id="light-intensity" class="demo-slider"></div>
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <div class="slideBarDiv">
+          衰减因子<div id="light-decay" class="demo-slider"></div>
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <div class="slideBarDiv">
+          光照距离<div id="light-distance" class="demo-slider"></div>
+        </div>
+      </div>
+    </div>
+    <div class="sample-button-panel">
+      <button onclick="addLightBtnClicked()" type="button" class="layui-btn layui-btn-normal">添加光源</button>
+      <button onclick="removeLightBtnClicked()" type="button" class="layui-btn layui-btn-normal">移除光源</button>
+    </div>
+  </form>
+</div>
+<style>
+  .layui-slider {
+    top: -20px;
+    width: 196px;
+    left: 94px;
+  }
+
+  .sample-main-panel {
+    height: auto;
+  }
+</style>
+</body>
+
+</html>

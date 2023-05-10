@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>积雨特效</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer = null;
+      //绘制多边形的工具
+      let drawElement = null;
+      //绘制区域
+      let primitives = null
+
+
+      //地图初始化函数
+      function init() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          //添加中地大楼模型
+          viewer.scene.layers.appendM3DLayer("http://192.168.82.89:8200/3DData/ModelCache/M3D//1.0/ZondyFaceModels/ZondyFaceModels.mcj", {});
+          //添加天地图底图
+          addTdtImage();
+      }
+
+      //添加天地图底图
+      function addTdtImage() {
+          let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      //绘制积雨区域
+      function rainArea() {
+          //启用场景的光源
+          viewer.scene.globe.enableLighting = true;
+          // 设置太阳时间
+          var utc = Cesium.JulianDate.fromDate(new Date('2021/05/04 12:00:00')); //UTC
+          viewer.clockViewModel.currentTime = Cesium.JulianDate.addHours(utc, 8, new Cesium.JulianDate()); //北京时间=UTC+8=GMT+8
+          // 绘制前先清除之前的效果
+          clearRainArea();
+          //绘制工具
+          drawElement = new Cesium.DrawElement(viewer);
+          drawElement.startDrawingPolygon({
+              //绘制过程中区域的颜色
+              color: new Cesium.Color(0.5, 0.8, 0.3),
+              //绘制完成后的回调
+              callback: function (result) {
+                  //覆盖地形显示
+                  var polygon = new Cesium.GroundPrimitive({
+                      //要渲染的几何实例
+                      geometryInstances: new Cesium.GeometryInstance({
+                          geometry: new Cesium.PolygonGeometry({
+                              //根据绘制的点集合，生成可包含孔的多边形层次结构
+                              polygonHierarchy: new Cesium.PolygonHierarchy(result.positions),
+                              vertexFormat: Cesium.EllipsoidSurfaceAppearance.VERTEX_FORMAT
+                          })
+                      }),
+                      //渲染外观
+                      appearance: new Cesium.EllipsoidSurfaceAppearance({
+                          //材质
+                          material: new Cesium.Material({
+                              fabric: {
+                                  //材质类型
+                                  type: 'Water',
+                                  uniforms: {
+                                      //水的底色
+                                      baseWaterColor: new Cesium.Color(0.2, 0.3, 0.6, 0.7)
+                                  }
+                              },
+                          })
+                      }),
+                      //3D瓦片
+                      classificationType: Cesium.ClassificationType.CESIUM_3D_TILE
+                  });
+                  //效果添加到场景
+                  primitives = viewer.scene.primitives.add(polygon);
+                  //绘制完清除工具
+                  if (drawElement) {
+                      drawElement.stopDrawing();
+                  }
+              }
+          });
+      }
+
+      //清除分析结果
+      function clearRainArea() {
+          if (primitives !== null) {
+              primitives.destroy();
+          }
+      }
+
+  </script>
+</head>
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+<div class="layui-panel layui-panel-right" style="width: auto">
+  <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="rainArea()">绘制积雨区域</button>
+  <button type="button" class="layui-btn layui-btn-sm layui-btn-danger" onclick="clearRainArea()">移除积雨区域</button>
+</div>
+</body>
+</html>

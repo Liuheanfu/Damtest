@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>行人漫游工具</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/tool.css"/>
+  <script>
+      "use strict";
+      //定义三维视图的主要类
+      let viewer, options, animation;
+      //取得jquery对象
+      let $ = layui.$;
+
+      //地图初始化函数
+      function init() {
+          //初始化三维球体
+          initViewer();
+          //加载天地图
+          addTDT();
+          // 添加中地大楼模型
+          addZondyBuilding();
+          //初始化漫游工具
+          initAnimationTool();
+          // 开启动画漫游
+          animation.start();
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer("mapgis-3d-viewer", {
+              infoBox: false,
+              selectionIndicator: false,
+              shouldAnimate: true,
+          });
+      }
+
+      //加载天地图
+      function addTDT() {
+          //加载天地图
+         options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      //加载中地大楼
+      function addZondyBuilding() {
+          viewer.scene.layers.appendM3DLayer(
+              "http://192.168.82.89:8200/3DData/ModelCache/M3D//1.0/ZondyFaceModels/ZondyFaceModels.mcj"
+          );
+      }
+
+      //初始化漫游工具
+      function initAnimationTool() {
+          // 添加label实体，详见Entity文档
+          let info = viewer.entities.add({
+              name: "animation info",
+              label: {
+                  show: true,
+                  showBackground: true,
+                  backgroundColor: new Cesium.Color(0.165, 0.165, 0.165, 1),
+                  text: "关山大道",
+                  font: "18px sans-serif",
+                  scale: 1,
+                  pixelOffset: new Cesium.Cartesian2(0, -100),
+              },
+          });
+          // 关山大道坐标数组
+          let pathPositions = [
+              {
+                  x: -2272664.7466712743,
+                  y: 5008264.2066052295,
+                  z: 3219172.9093626705,
+              },
+              {
+                  x: -2272786.8186549335,
+                  y: 5008840.277123681,
+                  z: 3218196.878034548,
+              },
+              {
+                  x: -2273186.815588329,
+                  y: 5010524.174541318,
+                  z: 3215311.200546971,
+              },
+          ];
+          // 定义动画漫游对象
+          animation = new Cesium.AnimationTool(viewer, {
+              // 漫游的方向角
+              heading: Cesium.Math.PI / 2,
+              // 漫游的俯仰角
+              pitch: -Cesium.Math.PI / 12,
+              // 相机距离模型的距离（米）
+              range: 800,
+              // 设置漫游的视角类型。0：正常，不移动相机；1：跟随；2：锁定第一视角；3：上帝视角
+              animationType: 2,
+              // 是否循环漫游动画
+              isLoop: false,
+              // 是否显示漫游路径
+              showPath: false,
+              // 漫游路径(世界坐标点数组)
+              positions: pathPositions,
+              // 漫游速度(m/s)
+              speed: 50,
+              // 倍速
+              speedupFactor: 1,
+              // 附加高程
+              exHeight: 0,
+              // 是否显示用时和距离提示信息
+              showInfo: false,
+              // 漫游的模型对象的url，为空表示不显示
+              modelUrl: undefined,
+              // 完成漫游后的回调函数
+              complete: function () {
+                  viewer.entities.remove(info);
+              },
+              // 路径插值算法。可选：拉格朗日算法Cesium.LagrangePolynomialApproximation、线性插值 Cesium.LinearApproximation、埃尔米特插值插值Cesium.HermitePolynomialApproximation
+              interpolationAlgorithm: Cesium.LagrangePolynomialApproximation,
+              //是否获取当前点坐标，为true时，需配合返回当前点坐标的回调函数callBack一起使用
+              isGetPositionNow: true,
+              //回调函数，返回当前所在点坐标
+              callBack: function (positionNow) {
+                  // 动态更新label的位置
+                  info.position = new Cesium.CallbackProperty(function () {
+                      return positionNow;
+                  }, false);
+              },
+              //是否需要将较大转弯点处理为圆弧
+              isProcessCorner: false,
+              //设置判断为转弯点的角度的最大值，不超过150的转角会被执行插值，处理为圆弧
+              maxAngle: 150.0,
+              //转弯处往圆弧曲线上插值点的步长，点个数=1/curveStep
+              curveStep: 0.01,
+              // 是否挂载动态扫描特效
+              isAddScanEffect: false,
+              // 是否获取路径点的真实高程
+              isGetRealHeight: false,
+              //是否执行onPositionCallback回调函数
+              onPositionTag: true,
+              // 当点经过设置的路径点时，返回路径点坐标和index索引号
+              onPositionCallback: function (result) {
+                  console.log(
+                      "到达站点" + result.index + "，站点坐标：" + result.position
+                  );
+              },
+              // 用于判断当前点是否在路径点所在位置附近的精度
+              disFactor: 10,
+          });
+      }
+
+      function pause() {
+          // 切换动画漫游的暂停状态
+          animation.pause = !animation.pause;
+          if ($('#pause').html() === '暂停') {
+              $('#pause').html('继续');
+          } else {
+              $('#pause').html('暂停');
+          }
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right" style="width: 103px">
+  <div class="sample-button-panel">
+    <button id="pause" type="button" class="layui-btn" onclick="pause()">暂停</button>
+  </div>
+</div>
+</body>
+</html>

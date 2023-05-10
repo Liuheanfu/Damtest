@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta charset='utf-8'/>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>M3D(1.0)-分段专题图</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer, renderer_range;
+
+      //地图初始化函数
+      function init() {
+          //初始化三维球体
+          initViewer();
+          //添加天地图
+          addTDT();
+          //设置专题图参数
+          setRender();
+          //添加M3D专题图
+          addM3DThemeLayer();
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+      }
+
+      //添加天地图
+      function addTDT() {
+          //加载天地图底图
+          let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          };
+          //添加卫星影像
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      //设置专题图参数
+      function setRender() {
+          //分段专题图参数
+          renderer_range = {
+              //专题图字段，OID
+              field: "OID",
+              //专题图类型-分段
+              type: "class-breaks",
+              //专题图着色参数
+              classBreakInfos: [{
+                  //分段最大值
+                  maxValue: 2200,
+                  //分段最小值
+                  minValue: 1,
+                  //渲染符号
+                  symbol: {
+                      //渲染类型为M3D
+                      type: 'mesh-3d',
+                      //覆盖物图层
+                      symbolLayers: [{
+                          //图层类型-颜色填充
+                          type: "fill",
+                          //图层材质
+                          material: {
+                              //填充颜色
+                              color: new Cesium.Color(1.0, 0.0, 0.0, 1.0)
+                          }
+                      }]
+                  }
+              }, {
+                  maxValue: 10000,
+                  minValue: 2201,
+                  symbol: {
+                      type: 'mesh-3d',
+                      symbolLayers: [{
+                          type: "fill",
+                          material: {
+                              color: new Cesium.Color(1.0, 1.0, 0.0, 0.7)
+                          }
+                      }]
+                  }
+              }, {
+                  maxValue: 40000,
+                  minValue: 10001,
+                  symbol: {
+                      type: 'mesh-3d',
+                      symbolLayers: [{
+                          type: "fill",
+                          material: {
+                              color: new Cesium.Color(1.0, 0.0, 1.0, 0.7)
+                          }
+                      }]
+                  }
+              }, {
+                  maxValue: 70000,
+                  minValue: 40001,
+                  symbol: {
+                      type: 'mesh-3d',
+                      symbolLayers: [{
+                          type: "fill",
+                          material: {
+                              color: new Cesium.Color(0.0, 1.0, 0.0, 0.7)
+                          }
+                      }]
+                  }
+              }, {
+                  maxValue: 110000,
+                  minValue: 70001,
+                  symbol: {
+                      type: 'mesh-3d',
+                      symbolLayers: [{
+                          type: "fill",
+                          material: {
+                              color: new Cesium.Color(1.0, 0.3, 0.2, 0.7)
+                          }
+                      }]
+                  }
+              }]
+          };
+      }
+
+      //添加M3D专题图
+      function addM3DThemeLayer() {
+          //添加白膜数据
+          let url = 'http://192.168.88.204:8089/M3D/1.0/%E7%99%BD%E6%A8%A1/dltbti.mcj';
+
+          //添加M3D白膜数据
+          viewer.scene.layers.appendM3DLayer(url, {
+              //设置render参数，渲染专题图
+              renderer: renderer_range
+          });
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+</body>
+
+</html>

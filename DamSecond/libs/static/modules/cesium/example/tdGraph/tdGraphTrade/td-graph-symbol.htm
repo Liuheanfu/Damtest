@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>符号库使用</title>
+  <!-- jquery -->
+  <script src="http://localhost:8080/static/libs/cdn/jquery/jquery-1.12.4.min.js"></script>
+  <!-- cesium -->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!-- plot -->
+  <script src="http://localhost:8080/static/libs/cdn/webclient-plot/webclient-plot.min.js"></script>
+  <!-- menu -->
+  <script src="http://localhost:8080/static/libs/cdn/webclient-plot-plugins/PlotMenu/index.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/webclient-plot-plugins/PlotMenu/index.css"/>
+  <!--示例公共样式-->
+  <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.2.0/css/all.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      "use strict";
+
+      //定义三维视图的主要类
+      let viewer, options;
+
+      //地图初始化函数
+      function init() {
+          //初始化三维球体
+          initViewer();
+          //添加天地图
+          addTDT();
+          //初始化行业标绘工具
+          initPlot();
+          //视点跳转
+          flyTo();
+      }
+      //初始化三维球体
+      function initViewer() {
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          //显示鼠标位置
+          viewer.showPosition();
+          //抗锯齿处理
+          viewer.scene.fxaa = true;
+          viewer.scene.postProcessStages.fxaa.enabled = true;
+      }
+
+      //加载天地图底图
+      function addTDT() {
+          let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      //初始化行业标绘工具
+      function initPlot() {
+          //标绘工具绑定在window.Zondy上
+          const Zondy = window.Zondy;
+          // 获取标绘类
+          const Plot = Zondy.Plot;
+          const {
+              // 三维图层
+              PlotLayer3D,
+              // 三维图层组
+              PlotLayer3DGroup,
+              // 符号管理器
+              SymbolManager,
+              // 绘制工具
+              DrawTool
+          } = Plot;
+          //设置符号库路径
+          const symbolUrl = `http://localhost:8080/static/libs/cdn/webclient-plot/symbols.json`;
+          const symbolOptions = {
+              //设置符号库字体路径
+              fontURL: `http://localhost:8080/static/libs/cdn/webclient-plot/`,
+              //设置静态资源路径
+              baseUrl: `http://localhost:8080/static/libs/cdn/webclient-plot/assets/`,
+          };
+
+          //初始化标绘图层，图层组，绘制工具，编辑工具，当前拾取标绘对象
+          let plotLayer, plotLayer3DGroup, drawTool, plotEditor, currentPlot;
+          // #创建符号管理器
+          let manager = new SymbolManager(symbolUrl, symbolOptions);
+          // #请求获取符号库
+          manager.getSymbols().then(function () {
+              // 创建图层组
+              plotLayer3DGroup = new PlotLayer3DGroup(viewer);
+              // 创建三维图层
+              plotLayer = new PlotLayer3D(Cesium, viewer, {});
+              // 设置图层是否可编辑
+              plotLayer.editable = false;
+              // 创建绘制工具
+              drawTool = new DrawTool(plotLayer, {
+                  // 新增标绘对象回调
+                  addedPlot: function (plot) {
+                  },
+              });
+              // 将三维图层添加到图层组内
+              plotLayer3DGroup.addLayer(plotLayer);
+              //点击获取要素
+              plotLayer.editable = true;
+
+              //UI相关操作
+              // 获取完符号库后，创建左侧符号目录树，并绑定绘制方法
+              // #符号库结构
+              // 1.manager._leaves 符号库节点扁平化数组
+              // 2.manager._symbols 符号库节点（有目录结构）
+              function drawFunc(id) {
+                  drawTool.stopDraw();
+                  drawTool.drawPlot(manager.getLeafByID(id));
+              }
+
+              //初始化示例 ui 插件
+              const {PlotMenu} = window.webclientPlot;
+              new PlotMenu(manager, drawFunc);
+          });
+      }
+      //视点跳转
+      function flyTo() {
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(114, 29.83, 18000),
+              duration: 2,
+              orientation : {
+                  heading : Cesium.Math.toRadians(0),
+                  pitch : Cesium.Math.toRadians(-40.0),
+                  roll : 0.0
+              }
+          });
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+  <div id="side"></div>
+  <div id="content"></div>
+</div>
+</body>
+</html>

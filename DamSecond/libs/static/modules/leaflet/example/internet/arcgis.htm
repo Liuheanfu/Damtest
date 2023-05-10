@@ -1,0 +1,50 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>ArcGIS地图显示</title>
+    <script src="./static/libs/include-leaflet-local.js"></script>
+    <script type="text/javascript">
+        /**显示地图
+        */
+        function init() {
+            "use strict";
+            var ArcGISURL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
+            var Layer = L.tileLayer(ArcGISURL, { minZoom: 5, maxZoom: 18 });
+
+
+            var Layer2 = new Zondy.Map.ArcGISLayer({
+                //服务地址，在使用前需先登录服务(在浏览器中输入服务地址，输入用户名 admin，密码 sa 登录)
+                url: 'https://server.arcgisonline.com/arcgis/rest/services/World_Street_Map/MapServer',
+                //设置地图不连续显示
+                noWrap:true
+            });
+
+            var Maps = {
+                //访问ArcGIS官方地图(http://services.arcgisonline.com)
+                'ArcGIS基础底图':Layer,
+                //非wms,wmts,瓦片服务的地图
+                'ArcGIS街道地图':Layer2
+            };
+            //地图容器
+            var map = L.map('leaf_map', {
+                //显示中心
+                center: [30.495722001885323, 114.39960479736327],
+                //最小显示等级
+                minZoom: 0,
+                //最大显示等级
+                maxZoom: 15,
+                //当前显示等级
+                zoom: 11,
+                //图层
+                layers:Layer
+            });
+            L.control.layers(Maps).setPosition('topleft').addTo(map);
+        }
+    </script>
+</head>
+<body onload="init()">
+    <div id="leaf_map" style="width: 100%; height:700px;">
+    </div>
+</body>
+</html>

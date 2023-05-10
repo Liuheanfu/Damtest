@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta charset='utf-8' />
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+  <title>M3D(1.0)静态单体化</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css" />
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css" />
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer;
+
+      //地图初始化函数
+      function init() {
+          //初始化球体
+          initViewer();
+          //添加M3D1.0数据
+          addM3DV1();
+          //初始化查询操作
+          initQuery();
+      }
+
+      //构造三维视图类（视图容器div的id，三维视图设置参数）
+      function initViewer() {
+          viewer = new Cesium.Viewer("mapgis-3d-viewer", {});
+      }
+
+      //添加M3D1.0数据
+      function addM3DV1() {
+          viewer.scene.layers.appendM3DLayer("http://192.168.82.89:8200/3DData/ModelCache/M3D//1.0/景观示例/景观_建筑模型_1.mcj");
+      }
+
+      //初始化查询操作
+      function initQuery() {
+          //创建OID提示框
+          var nameOverlay = document.createElement('div');
+          viewer.container.appendChild(nameOverlay);
+          nameOverlay.className = 'backdrop';
+          nameOverlay.style.display = 'none';
+          nameOverlay.style.position = 'absolute';
+          nameOverlay.style.bottom = '0';
+          nameOverlay.style.left = '0';
+          nameOverlay.style['pointer-events'] = 'none';
+          nameOverlay.style.padding = '4px';
+          nameOverlay.style.backgroundColor = 'white';
+
+          //设置点击函数
+          viewer.screenSpaceEventHandler.setInputAction(function onLeftClick(movement) {
+              //根据鼠标点击拾取要素
+              var pickedFeature = viewer.scene.pick(movement.position);
+              //获取要素所对应的图层，支持多图层要素高亮
+              var layerList = [pickedFeature.tileset];
+              //获取要素上的OID，该属性绑在name变量上XX_0_OID
+              var title = pickedFeature.getProperty('name');
+              //分割字符串
+              var values = title.split('_');
+              //获取OID
+              var OID = parseInt(values[2]);
+              //将OID传入高亮OID数组
+              var idList = [OID];
+              //设置高亮颜色
+              var options = {
+                  color: new Cesium.Color(1.0, 0.0, 0.0, 0.8)
+              };
+              //开始高亮
+              viewer.scene.startCustomDisplay(layerList, idList, options);
+
+              //更新OID弹框数据
+              nameOverlay.style.display = 'block';
+              nameOverlay.style.bottom = viewer.canvas.clientHeight - movement.position.y + 'px';
+              nameOverlay.style.left = movement.position.x + 'px';
+              nameOverlay.textContent = 'Oid: ' + OID;
+          }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+</body>
+
+</html>

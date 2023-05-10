@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset='utf-8'/>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+    <title>缓冲分析</title>
+    <!--引入Cesium.js库-->
+    <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+    <!--引入Cesium.js库相关css样式-->
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+    <!--turf.js库-->
+    <script src="http://localhost:8080/static/libs/cdn/turf/turf.min.js"></script>
+    <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+    <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+    <!--示例公共样式-->
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/css/analyse.css"/>
+    <script>
+        'use strict';
+        let viewer;
+        //点、线、面的geojson数据
+        let originPointData = {
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "properties": {},
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [114.24270629882811, 30.622550184776674]
+                }
+            }]
+        };
+        let originLineData = {
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "properties": {},
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [
+                        [114.34810638427734, 30.634958017061198],
+                        [114.2856216430664, 30.554869984737515],
+                        [114.246826171875, 30.4954261715298]
+                    ]
+                }
+            }]
+        };
+        let originPolygonData = {
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "properties": {},
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [114.33815002441406, 30.502230042106245],
+                            [114.34398651123045, 30.485071542395932],
+                            [114.3728256225586, 30.472348632640834],
+                            [114.38278198242188, 30.49010107130931],
+                            [114.35256958007811, 30.50518809826035],
+                            [114.33815002441406, 30.502230042106245]
+                        ]
+                    ]
+                }
+            }]
+        };
+        //点、线、面数据资源，移除时使用
+        let bufferPointDataSource = null;
+        let bufferPolygonDataSource = null;
+        let bufferLineDataSource = null;
+
+        //初始化
+        function init() {
+            //地图初始化
+            initMap();
+            //加载原始的点、线、面数据
+            loadOriginData();
+        }
+
+        //地图初始化
+        function initMap() {
+            //初始化三维球体
+            initViewer();
+            //加载天地图
+            addTDT();
+            //设置相机位置
+            setCamera();
+        }
+
+        //初始化三维球体
+        function initViewer() {
+            //构造三维视图类（视图容器div的id，三维视图设置参数）
+            viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+        }
+
+        //加载天地图
+        function addTDT() {
+            let options = {
+                //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+                url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+                //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+                layer: "vec",
+                //瓦片样式
+                style: "default",
+                //比例尺
+                tileMatrixSetID: "w",
+                //请求格式
+                format: "tiles"
+            };
+            //添加卫星影像
+            viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+        }
+
+        //设置相机位置
+        function setCamera() {
+            //相机的最终位置
+            let destination = Cesium.Cartesian3.fromDegrees(114.289398, 30.59418345, 50000.0);
+            viewer.scene.camera.setView({
+                destination: destination
+            });
+        }
+
+        //先加载点、线、面资源，再进行缓冲区分析
+        function loadOriginData() {
+            //点
+            viewer.dataSources.add(Cesium.GeoJsonDataSource.load(originPointData, {
+              markerColor: Cesium.Color.fromCssColorString('#4169E1'),
+            }));
+            //线
+            viewer.dataSources.add(Cesium.GeoJsonDataSource.load(originLineData, {
+                //折线和多边形轮廓的颜色
+                stroke: Cesium.Color.fromCssColorString('#4169E1'),
+                //折线和多边形轮廓宽度
+                strokeWidth: 15
+            }));
+            //面
+            viewer.dataSources.add(Cesium.GeoJsonDataSource.load(originPolygonData, {
+                //多边形内部颜色
+                fill: Cesium.Color.fromCssColorString('#4169E1'),
+                //折线和多边形轮廓宽度
+                strokeWidth: 15
+            }));
+        }
+
+        //点缓冲按钮触发
+        function bufferPoint() {
+            buffer(originPointData, '#C69D21').then(res => {
+                //保存缓冲结果资源，移除时使用
+                bufferPointDataSource = res
+            });
+        }
+
+        //线缓冲按钮触发
+        function bufferLine() {
+            buffer(originLineData, '#ADFF2F').then(res => {
+                //保存缓冲结果资源，移除时使用
+                bufferLineDataSource = res
+            });
+        }
+
+        //面缓冲按钮触发
+        function bufferPolygon() {
+            buffer(originPolygonData, '#800080').then(res => {
+                //保存缓冲结果资源，移除时使用
+                bufferPolygonDataSource = res
+            });
+        }
+
+        //缓冲分析
+        function buffer(originGeoJson, fillColor) {
+            //turf.buffer缓冲分析
+            let geoJson = turf.buffer(
+                //标准geoJson
+                originGeoJson,
+                //缓冲距离
+                1.5,
+                {
+                    //单位：英里
+                    units: 'miles'
+                }
+            );
+            //移除缓冲结果
+            removeAllDataSource();
+            //添加缓冲分析结果
+            let dataSource = viewer.dataSources.add(Cesium.GeoJsonDataSource.load(geoJson, {
+                //折线和多边形轮廓的颜色
+                stroke: Cesium.Color.fromCssColorString(fillColor).withAlpha(0.7),
+                //多边形内部颜色
+                fill: Cesium.Color.fromCssColorString(fillColor).withAlpha(0.7),
+                //折线和多边形轮廓宽度
+                strokeWidth: 1,
+                //设置指定多边形是否为轮廓的属性，不设置true，轮廓不显示
+                outline: true
+            }));
+            //视角飞行
+            viewer.flyTo(dataSource, {duration: 0.5});
+            return dataSource;
+        }
+
+        //每次缓冲之前，将之前的缓冲结果删除
+        function removeAllDataSource() {
+            //删除点缓冲结果
+            if (bufferPointDataSource) {
+                viewer.dataSources.remove(bufferPointDataSource);
+            }
+            //删除线缓冲结果
+            if (bufferLineDataSource) {
+                viewer.dataSources.remove(bufferLineDataSource);
+            }
+            //删除面缓冲结果
+            if (bufferPolygonDataSource) {
+                viewer.dataSources.remove(bufferPolygonDataSource);
+            }
+        }
+    </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right" style="width: 302px;">
+    <form class="layui-form" action="">
+        <div class="sample-button-panel">
+            <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="bufferPoint()">点缓冲分析</button>
+            <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="bufferLine()">线缓冲分析</button>
+            <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="bufferPolygon()">面缓冲分析</button>
+        </div>
+    </form>
+</div>
+</body>
+</html>

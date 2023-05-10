@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta charset='utf-8' />
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+  <title>M3D(2.0)静态单体化</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css" />
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css" />
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer, index;
+
+      //地图初始化函数
+      function init() {
+          //初始化球体
+          initViewer();
+          //添加M3D2.0数据
+          addM3DV2();
+          //初始化查询操作
+          initQuery();
+      }
+
+      //构造三维视图类（视图容器div的id，三维视图设置参数）
+      function initViewer() {
+          viewer = new Cesium.Viewer("mapgis-3d-viewer", {});
+      }
+
+      //添加M3D2.0数据
+      function addM3DV2() {
+          index = viewer.scene.layers.appendM3DLayer("http://192.168.82.89:8200/3DData/ModelCache/M3D//2.0/M3DAttributeTest_BIN/zondy.mcj");
+      }
+
+      //初始化查询操作
+      function initQuery() {
+          //创建要素属性提示框
+          var nameOverlay = document.createElement('div');
+          viewer.container.appendChild(nameOverlay);
+          nameOverlay.className = 'backdrop';
+          nameOverlay.style.display = 'none';
+          nameOverlay.style.position = 'absolute';
+          nameOverlay.style.bottom = '0';
+          nameOverlay.style.left = '0';
+          nameOverlay.style['pointer-events'] = 'none';
+          nameOverlay.style.padding = '4px';
+          nameOverlay.style.backgroundColor = 'white';
+
+          //设置点击函数
+          viewer.screenSpaceEventHandler.setInputAction(function onLeftClick(movement) {
+              //获取模型缓存图层
+              let M3DLayer = viewer.scene.layers.getM3DLayer(index);
+              //获取OID
+              let oid = viewer.scene.pickOid(movement.position);
+              //获取高亮要素
+              let feature = viewer.scene.pick(movement.position);
+              //设置高亮OID
+              M3DLayer.pickedOid = oid;
+              //设置高亮颜色
+              M3DLayer.pickedColor = new Cesium.Color(1.0, 1.0, 0.0, 0.6);
+              //根据OID查询要素属性
+              var result = feature.content.getAttributeByOID(oid);
+
+              //更新要素属性数据
+              nameOverlay.style.display = 'block';
+              nameOverlay.style.bottom = viewer.canvas.clientHeight - movement.position.y + 'px';
+              nameOverlay.style.left = movement.position.x + 'px';
+              nameOverlay.innerHTML = '<table><tbody>' +
+                  '<tr><th>oid</th><td>' +
+                  result['oid'] +
+                  '</td></tr>' +
+                  '<tr><th>height</th><td>' +
+                  result['height'] +
+                  '</td></tr>' +
+                  '<tr><th>used</th><td>' +
+                  result['used'] +
+                  '</td></tr>' +
+                  '<tr><th>code</th><td>' +
+                  result['code'] +
+                  '</td></tr>' +
+                  '</tbody></table>';
+          }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+</body>
+
+</html>

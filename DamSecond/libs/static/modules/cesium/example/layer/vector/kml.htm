@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>加载 KML 数据</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      "use strict";
+      //定义三维视图的主要类
+      let viewer, options;
+
+      //地图初始化函数
+      function init() {
+          //初始化三维球体
+          initViewer();
+          //加载天地图
+          addTDT();
+          //视角跳转
+          flyTo();
+          //加载KML数据类
+          addKML();
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer("mapgis-3d-viewer", {});
+      }
+
+      //加载天地图
+      function addTDT() {
+          //加载天地图
+          options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          };
+          //添加卫星影像
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      //视角跳转
+      function flyTo() {
+          viewer.camera.setView({
+              destination: Cesium.Cartesian3.fromDegrees(
+                  114.18944441797595,
+                  30.5690284961602,
+                  2500000
+              ),
+          });
+      }
+
+      //加载KML数据
+      function addKML() {
+          const kmlData = new Cesium.KmlDataSource({
+              camera: viewer.scene.camera, //相机
+              canvas: viewer.scene.canvas, //画布
+              ellipsoid: Cesium.Ellipsoid.WGS84, //用于地理计算的椭球体
+          });
+          viewer.dataSources.add(
+              // 加载KML数据
+              kmlData.load(
+                  "http://192.168.82.89:8200/Vector/kml/facilities.kml", //kml数据url
+                  {
+                      clampToGround: false, // 数据是否贴地显示
+                  }
+              )
+          );
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+</body>
+</html>

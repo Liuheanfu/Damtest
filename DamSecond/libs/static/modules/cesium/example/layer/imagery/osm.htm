@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>加载OSM图层</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      "use strict";
+      //定义三维视图的主要类
+      let viewer, options;
+
+      //地图初始化函数
+      function init() {
+          //初始化球体
+          initViewer();
+          // 加载OSM数据
+          addOSMMap();
+          //飞到指定视角
+          flyTo();
+      }
+
+      //初始化球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer("mapgis-3d-viewer", {});
+          viewer.showPosition();
+      }
+
+      // 加载OSM数据
+      function addOSMMap() {
+          const osmMap = viewer.imageryLayers.addImageryProvider(
+              new Cesium.UrlTemplateImageryProvider({
+                  //请求高德地图瓦片的url模板,{x}、{y}、{z}分别表示瓦片的x坐标、y坐标和层级
+                  url: "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                  //数据源信息，会展示在画布上
+                  credit: new Cesium.Credit("OSM地图服务"),
+                  //子域用于替换url模板中的{s}占位符
+                  subdomains: ["a", "b", "c"],
+                  //瓦片的划分平铺方案,可选：经纬度 Cesium.GeographicTilingScheme；Web墨卡托 Cesium.WebMercatorTilingScheme
+                  tilingScheme: new Cesium.WebMercatorTilingScheme(),
+                  maximumLevel: 16, //图像支持的最大级别
+                  minimumLevel: 0, //图像支持的最小级别
+                  tileWidth: 256, //瓦片宽度
+                  tileHeight: 256, //瓦片高度
+                  hasAlphaChannel: true, // 是否支持图像显示透明度
+              })
+          );
+      }
+
+      //飞到指定视角
+      function flyTo() {
+          //飞到指定视角
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(116.5258,41.8054,20000000)
+          });
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+</body>
+</html>

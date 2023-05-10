@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta charset='utf-8' />
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+  <title>圆球</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css" />
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css" />
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/graphic.css" />
+  <script>
+      'use strict';
+      //取得jquery对象
+      let $ = layui.$;
+      //颜色管理器对象
+      let colorpicker = layui.colorpicker;
+      //定义三维视图的主要类
+      let viewer, options, graphicsLayer, sphere;
+
+      //地图初始化函数
+      function init() {
+          //初始化球体
+          initViewer();
+          //初始化标绘图层
+          addGraphicLayer();
+          //圆球1
+          addColorSphere1();
+          //圆球2
+          addSemiSphere2();
+          //圆球3
+          addSemiSphere3();
+          //圆球4
+          addSemiSphere4();
+          //圆球5
+          addSemiSphere5();
+          //圆球6
+          addSemiSphere6();
+          //圆球7
+          addSemiSphere7();
+          //圆球8
+          addSemiSphere8();
+          //圆球9
+          addSemiSphere9();
+          //圆球10
+          addSemiSphere10();
+          //圆球11
+          addSemiSphere11();
+          //圆球12
+          addSemiSphere12();
+          //圆球13
+          addSemiSphere13();
+          //圆球14
+          addSemiSphere14();
+          //圆球15
+          addTrailSphere15();
+          //圆球16
+          addTrailSphere16();
+          //圆球17
+          addEllipsoid17();
+          //加载天地图底图
+          addTDT();
+          //视点跳转
+          flyTo();
+          //初始化示例UI
+          initUI();
+      }
+
+      //初始化球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          //显示鼠标位置
+          viewer.showPosition();
+      }
+
+      //初始化标绘图层
+      function addGraphicLayer() {
+          graphicsLayer = new Cesium.GraphicsLayer(viewer, {
+              clickGraphic: function(graphic) {
+                  console.log("graphic", graphic)
+                  sphere = graphic;
+                  //更新样式面板
+                  $('#sphere-radius').val(sphere.style.radius);
+                  $('#sphere-height').val(sphere.style.height);
+                  colorpicker.render({
+                      elem: '#sphere-color',
+                      color: sphere.style.color.toCssHexString(),
+                      done: function(color) {
+                          $('#sphere-color-input').val(color);
+                          sphere.style.color = Cesium.Color.fromCssColorString(color);
+                      }
+                  });
+                  //这个时候展开编辑面板
+                  $('#editPanel').show();
+              }
+          });
+      }
+
+      //圆球1
+      function addColorSphere1() {
+          let sphereGraphic1 = new Cesium.Graphic({
+              type: 'sphere',
+              positions: [Cesium.Cartesian3.fromDegrees(113.9853, 29.9939, 0)],
+              style: {
+                  color: Cesium.Color.SPRINGGREEN,
+                  radius: 3000,
+                  height: 100
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(sphereGraphic1);
+      }
+
+      //圆球2
+      function addSemiSphere2() {
+          let sphereGraphic2 = new Cesium.Graphic({
+              type: 'sphere',
+              positions: [Cesium.Cartesian3.fromDegrees(114.0853, 29.9939, 0)],
+              style: {
+                  radius: 3000,
+                  height: 100,
+                  material: Cesium.Material.fromType(Cesium.Material.ImageType, {
+                      image: 'http://192.168.82.89:8200/NoneSpatialData/image/earth.jpg',
+                      repeat: new Cesium.Cartesian2(1.0, 1.0)
+                  })
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(sphereGraphic2);
+      }
+
+      //圆球3
+      function addSemiSphere3() {
+          let sphereGraphic3 = new Cesium.Graphic({
+              type: 'sphere',
+              positions: [Cesium.Cartesian3.fromDegrees(114.1853, 29.9939, 0)],
+              style: {
+                  color: Cesium.Color.LIGHTBLUE,
+                  maximumCone: Math.PI / 2,
+                  radius: 3000,
+                  height: 100
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(sphereGraphic3);
+      }
+
+      //圆球4
+      function addSemiSphere4() {
+          let sphereGraphic4 = new Cesium.Graphic({
+              type: 'sphere',
+              positions: [Cesium.Cartesian3.fromDegrees(114.2853, 29.9939, 0)],
+              style: {
+                  color: Cesium.Color.BLUEVIOLET,
+                  minimumCone: Math.PI * 2 / 3,
+                  maximumCone: Math.PI,
+                  radius: 3000,
+                  height: 100
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(sphereGraphic4);
+      }
+
+      //圆球5
+      function addSemiSphere5() {
+          let sphereGraphic5 = new Cesium.Graphic({
+              type: 'sphere',
+              positions: [Cesium.Cartesian3.fromDegrees(114.3853, 29.9939, 0)],
+              style: {
+                  color: Cesium.Color.CADETBLUE,
+                  maximumClock: Math.PI,
+                  radius: 3000,
+                  height: 100
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(sphereGraphic5);
+      }
+
+      //圆球6
+      function addSemiSphere6() {
+          let sphereGraphic6 = new Cesium.Graphic({
+              type: 'sphere',
+              positions: [Cesium.Cartesian3.fromDegrees(114.4853, 29.9939, 0)],
+              style: {
+                  color: Cesium.Color.CHOCOLATE,
+                  minimumClock: Math.PI,
+                  maximumClock: Math.PI * 2,
+                  radius: 3000,
+                  height: 100
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(sphereGraphic6);
+      }
+
+      //圆球7
+      function addSemiSphere7() {
+          let sphereGraphic7 = new Cesium.Graphic({
+              type: 'sphere',
+              positions: [Cesium.Cartesian3.fromDegrees(113.9953, 29.8939, 0)],
+              style: {
+                  color: Cesium.Color.INDIANRED,
+                  maximumCone: Math.PI / 2,
+                  minimumClock: Math.PI / 2,
+                  maximumClock: Math.PI + 3,
+                  radius: 3000,
+                  innerRadius: 1,
+                  height: 100
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(sphereGraphic7);
+      }
+
+      //圆球8
+      function addSemiSphere8() {
+          let sphereGraphic8 = new Cesium.Graphic({
+              type: 'sphere',
+              positions: [Cesium.Cartesian3.fromDegrees(114.0853, 29.8939, 0)],
+              style: {
+                  color: Cesium.Color.DARKCYAN,
+                  minimumCone: Math.PI / 3,
+                  maximumCone: Math.PI / 2,
+                  minimumClock: Math.PI - 0.4,
+                  maximumClock: Math.PI + 0.4,
+                  innerRadius: 1,
+                  radius: 3000,
+                  height: 100
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(sphereGraphic8);
+      }
+
+      //圆球9
+      function addSemiSphere9() {
+          let sphereGraphic9 = new Cesium.Graphic({
+              type: 'sphere',
+              positions: [Cesium.Cartesian3.fromDegrees(114.1853, 29.8939, 0)],
+              style: {
+                  color: Cesium.Color.FUCHSIA,
+                  minimumCone: Math.PI / 2,
+                  maximumCone: Math.PI / 2,
+                  minimumClock: Math.PI / 2,
+                  maximumClock: Math.PI / 2 + 1.2,
+                  radius: 3000,
+                  innerRadius: 1,
+                  height: 100
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(sphereGraphic9);
+      }
+
+      //圆球10
+      function addSemiSphere10() {
+          let sphereGraphic10 = new Cesium.Graphic({
+              type: 'sphere',
+              positions: [Cesium.Cartesian3.fromDegrees(114.2853, 29.8939, 0)],
+              style: {
+                  color: Cesium.Color.RED,
+                  minimumCone: Math.PI / 2,
+                  maximumCone: Math.PI / 2,
+                  minimumClock: Math.PI / 2,
+                  maximumClock: Math.PI * 1.5,
+                  innerRadius: 2000,
+                  radius: 3000,
+                  height: 100
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(sphereGraphic10);
+      }
+
+      //圆球11
+      function addSemiSphere11() {
+          let sphereGraphic11 = new Cesium.Graphic({
+              type: 'sphere',
+              positions: [Cesium.Cartesian3.fromDegrees(114.3853, 29.8939, 0)],
+              style: {
+                  color: Cesium.Color.DARKORCHID,
+                  minimumCone: Math.PI / 2,
+                  maximumCone: Math.PI / 2,
+                  innerRadius: 1000,
+                  radius: 3000,
+                  height: 100
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(sphereGraphic11);
+      }
+
+      //圆球12
+      function addSemiSphere12() {
+          let sphereGraphic12 = new Cesium.Graphic({
+              type: 'sphere',
+              positions: [Cesium.Cartesian3.fromDegrees(114.4853, 29.8939, 0)],
+              style: {
+                  color: Cesium.Color.AQUAMARINE,
+                  minimumCone: Math.PI / 3,
+                  maximumCone: Math.PI * 2 / 3,
+                  radius: 3000,
+                  height: 100
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(sphereGraphic12);
+      }
+
+      //圆球13
+      function addSemiSphere13() {
+          let sphereGraphic13 = new Cesium.Graphic({
+              type: 'sphere',
+              positions: [Cesium.Cartesian3.fromDegrees(114.5853, 29.8939, 0)],
+              style: {
+                  color: Cesium.Color.CRIMSON,
+                  minimumCone: Math.PI / 3,
+                  maximumCone: Math.PI * 2 / 3,
+                  innerRadius: 2000,
+                  radius: 3000,
+                  height: 100
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(sphereGraphic13);
+      }
+
+      //圆球14
+      function addSemiSphere14() {
+          let sphereGraphic14 = new Cesium.Graphic({
+              type: 'sphere',
+              positions: [Cesium.Cartesian3.fromDegrees(113.9853, 29.7939, 0)],
+              style: {
+                  color: Cesium.Color.FUCHSIA,
+                  maximumCone: Math.PI / 2,
+                  radius: 3000,
+                  height: 100,
+                  material: Cesium.Material.fromType(Cesium.Material.GridType, {
+                      color: Cesium.Color.CORNFLOWERBLUE,
+                      cellAlpha: 0.2,
+                      lineCount: new Cesium.Cartesian2(8.0, 8.0),
+                      lineThickness: new Cesium.Cartesian2(1.0, 1.0),
+                      lineOffset: new Cesium.Cartesian2(0.0, 0.0)
+                  })
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(sphereGraphic14);
+      }
+
+      //圆球15
+      function addTrailSphere15() {
+          let sphereGraphic15 = new Cesium.Graphic({
+              type: 'sphere',
+              positions: [Cesium.Cartesian3.fromDegrees(114.0853, 29.7939, 0)],
+              style: {
+                  color: Cesium.Color.DEEPSKYBLUE,
+                  maximumCone: Math.PI / 2,
+                  radius: 3000,
+                  height: 100,
+                  material: Cesium.Material.fromType('PolylineTrailLink', {
+                      image: 'http://192.168.82.89:8200/NoneSpatialData/image/arrowhead.png',
+                      duration: 1000,
+                      direction: 2.0,
+                      color: Cesium.Color.YELLOW,
+                      repeat: new Cesium.Cartesian2(20.0, 1.0)
+                  })
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(sphereGraphic15);
+      }
+
+      //圆球16
+      function addTrailSphere16() {
+          let sphereGraphic16 = new Cesium.Graphic({
+              type: 'sphere',
+              positions: [Cesium.Cartesian3.fromDegrees(114.1853, 29.7939, 0)],
+              style: {
+                  color: Cesium.Color.RED,
+                  maximumCone: Math.PI / 2,
+                  radius: 3000,
+                  height: 100,
+                  material: Cesium.Material.fromType('PolylineTrailLink', {
+                      image: 'http://192.168.82.89:8200/NoneSpatialData/image/lineClr.png',
+                      duration: 1000,
+                      direction: 4.0,
+                      color: Cesium.Color.AQUA,
+                      repeat: new Cesium.Cartesian2(1.0, 1.0)
+                  })
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(sphereGraphic16);
+      }
+
+      //圆球17
+      function addEllipsoid17() {
+          let sphereGraphic17 = new Cesium.Graphic({
+              type: 'ellipsoid',
+              positions: [Cesium.Cartesian3.fromDegrees(114.2853, 29.7939, 0)],
+              style: {
+                  color: Cesium.Color.RED,
+                  radiusX: 3000,
+                  radiusY: 2000,
+                  radiusZ: 1000,
+                  height: 100
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(sphereGraphic17);
+      }
+
+      //添加天地图
+      function addTDT() {
+          let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      //视角跳转
+      function flyTo() {
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(114.3028, 29.8737, 92000),
+              duration: 2
+          });
+      }
+
+      //初始化示例UI
+      function initUI() {
+          layui.use('colorpicker', function() {
+              //半径
+              $("#sphere-radius").bind("input propertychange", function() {
+                  sphere.style.radius = Number($('#sphere-radius').val());
+              })
+
+              //离地高度
+              $("#sphere-height").bind("input propertychange", function() {
+                  sphere.style.height = Number($('#sphere-height').val());
+              })
+
+              //填充颜色
+              colorpicker.render({
+                  elem: '#sphere-color',
+                  color: '#9dfafe',
+                  done: function(color) {
+                      $('#sphere-color-input').val(color);
+                      sphere.style.color = Cesium.Color.fromCssColorString(color);
+                  }
+              });
+          });
+      }
+
+      function startDrawing() {
+          graphicsLayer.startDrawing({
+              type: 'sphere',
+              style: {
+                  color: Cesium.Color.fromCssColorString($('#sphere-color-input').val()),
+                  height: Number($('#sphere-height').val())
+              }
+          });
+      }
+
+      function stopDrawing() {
+          graphicsLayer.stopDrawing();
+      }
+
+      //删除
+      function deleteLabel() {
+          sphere.remove();
+          $('#editPanel').hide();
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right" style="text-align: center;width: 140px;padding: 10px;">
+  <button onclick="startDrawing()" style="margin:0 auto !important;" type="button" class="layui-btn layui-btn-normal graphic-button-margin">添加圆球</button>
+</div>
+<div class="layui-panel layui-panel-right" id="editPanel" style="display: none;top: 70px;">
+  <form class="layui-form" action="" lay-filter="example">
+    <div class="sample-main-panel">
+      <div class="layui-form-item">
+        <label class="layui-form-label">填充颜色</label>
+        <div class="layui-input-inline" style="width: 145px;margin-left:10px;">
+          <input disabled type="text" value="#00ffff" placeholder="填充颜色" class="layui-input" id="sphere-color-input">
+        </div>
+        <div class="layui-inline">
+          <div id="sphere-color"></div>
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <label class="layui-form-label">半径</label>
+        <div class="layui-input-block" style="width: 183px;">
+          <input id="sphere-radius" value="40" type="text" name="title" lay-verify="title" autocomplete="off" placeholder="40" class="layui-input">
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <label class="layui-form-label">离地高度</label>
+        <div class="layui-input-block" style="width: 183px;">
+          <input id="sphere-height" type="text" value="100" name="title" lay-verify="title" autocomplete="off" placeholder="100" class="layui-input">
+        </div>
+      </div>
+    </div>
+    <div class="sample-button-panel">
+      <button onclick="$('#editPanel').hide()" style="float: right;width:auto;margin-right: 0 !important;" type="button" class="layui-btn layui-btn-normal graphic-button-margin">关闭面板</button>
+      <span onclick="deleteLabel()" style="cursor:pointer;float: right;line-height: 32px;margin-right: 15px;">删除标绘</span>
+    </div>
+  </form>
+</div>
+</body>
+
+</html>

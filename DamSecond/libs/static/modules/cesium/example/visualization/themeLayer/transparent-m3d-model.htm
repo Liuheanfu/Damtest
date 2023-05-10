@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta charset='utf-8'/>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>M3D- 根据OID调整图元透明度</title>
+  <!--引入Cesium库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css" />
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/visual.css"/>
+    <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer, renderer_unique,layer;
+      let transparent = 50;
+
+      //地图初始化函数
+      function init() {
+          //初始化三维球体
+          initViewer();
+          //设置专题图颜色
+          setRender();
+          //添加M3D专题图
+          addM3DThemeLayer();
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          viewer.scene.globe.show = false;
+      }
+
+      //设置专题图参数
+      function setRender() {
+          //单值专题图参数
+          renderer_unique = {
+              //专题图字段
+              field: "OID",
+              //专题图类型-单值
+              type: "unique-value",
+              //专题图着色参数
+              uniqueValueInfos: []
+          }
+      }
+      
+      function transparentByOid(showSlideBar) {
+          console.log(transparent);
+          //初始化专题图着色参数，设置oid从1到3的图元变成半透明
+          for (let i = 1; i <= 3; i++) {
+              renderer_unique.uniqueValueInfos.push({
+                  //单值过滤条件
+                  value: i,
+                  //渲染符号
+                  symbol: {
+                      //渲染类型为M3D
+                      type: 'mesh-3d',
+                      //覆盖物图层
+                      symbolLayers: [
+                          {
+                              //图层类型-颜色填充
+                              type: "fill",
+                              //图层材质
+                              material: {
+                                  //当非白色的时候，调整的是图元覆盖物的透明度
+                                  //当为白色的时候，调整的是图元本身的透明度
+                                  color: new Cesium.Color(1.0, 1.0, 1.0, transparent/100)
+                              }
+                          }
+                      ]
+                  }
+              });
+          }
+          layer.renderer = renderer_unique;
+          if(showSlideBar){
+              addSlideBar();
+          }
+      }
+
+      //操作面板添加一个拖动条
+      function addSlideBar(){
+          document.getElementById('slideBarDivPanel').style.display = 'block';
+          layui.slider.render({
+              elem: '#transparentSlide',
+              value: transparent,
+              max: 100,
+              min: 0,
+              input: true,
+              theme: 'rgba(24, 144, 255, 1)',
+              change: function(value){
+                  transparent = value;
+                  renderer_unique.uniqueValueInfos = [];
+                  transparentByOid(false);
+              }
+          });
+      }
+
+      //添加M3D专题图
+      function addM3DThemeLayer() {
+          let url = 'http://192.168.82.89:8089/igs/rest/services/Scene/地质体模型/SceneServer';
+          //添加M3D白膜数据
+          viewer.scene.layers.appendSceneLayer(url, {
+              //设置render参数，渲染专题图
+              renderer: renderer_unique,
+              loaded: function (M3D) {
+                  layer = M3D;
+              }
+          });
+      }
+      
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right" style="height: 65px;width: 180px;">
+  <button type="button" onclick="transparentByOid(true)" class="layui-btn layui-btn-primary layui-btn-fluid">调整图元透明度</button>
+</div>
+<div class="layui-panel layui-panel-right" id="slideBarDivPanel" style="top:90px;height: 95px;width: 350px;display:none">
+  <div class="sample-main-panel">
+    <div class="slideBarDiv">
+      透明度控制：<div id="transparentSlide" class="demo-slider"></div>
+    </div>
+  </div>
+</div>
+</body>
+<style>
+  .slideBarDiv{
+    margin: 20px 0;
+    color:#fff;
+  }
+  #transparentSlide{
+    width: 200px;
+    display: inline-block;
+  }
+  .layui-slider {
+    top: -2px;
+    width: 110px;
+    left: 17px;
+  }
+  .layui-slider-input {
+    top: -16px;
+    right: -16px;
+  }
+</style>
+</html>

@@ -1,0 +1,53 @@
+﻿<!DOCTYPE HTML
+    PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <title>矢量地图文档显示</title>
+    <script include="jquery" src="./static/libs/include-lib-local.js"></script>
+    <script include="mapboxgl" src="./static/libs/include-mapboxgl-local.js"></script>
+    <link href="./static/modules/mapboxgl/example/style.css" rel="stylesheet" type="text/css" />
+    <script type="text/javascript">
+        /** 地图初始化
+         */
+        function init() {
+            "use strict";
+            //地图容器
+            var map = new mapboxgl.Map({
+                container: 'map',
+                crs: 'EPSG:4326',
+                minZoom: 1,
+                zoom: 1,
+                center: [0,0]
+            });
+            var navigationControl = new mapboxgl.NavigationControl();
+            map.addControl(navigationControl, 'top-left');
+            var { protocol, ip, port } = window.webclient;
+            var docLayer = new mapboxgl.Zondy.Map.MapDocLayer("WorldJWVector", {
+                layerID: 'mapgis-doc-WorldJWVector',
+                //IP地址
+                ip: `${ip}`,
+                //端口号
+                port: `${port}`,
+                //只显示一个图层,不平铺显示
+                noWrap: true,
+                serverType: 'doc',
+                tileSize: 512
+            });
+            docLayer.addToMap(map);
+            //注册鼠标移动事件
+            map.on('mousemove', function (e) {
+                document.getElementById('mouse-position').innerHTML = "经度：" + e.lngLat.lng.toFixed(2) + "，纬度：" + e.lngLat.lat.toFixed(2);
+            });
+        }
+    </script>
+</head>
+
+<body onload="init()">
+    <div id="map" style="width: 100%; height:700px;">
+        <div id="mouse-position">
+        </div>
+    </div>
+</body>
+
+</html>

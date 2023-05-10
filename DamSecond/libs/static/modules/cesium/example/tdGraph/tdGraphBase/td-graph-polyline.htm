@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta charset='utf-8'/>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>线</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/graphic.css"/>
+  <script>
+      'use strict';
+      //取得jquery对象
+      let $ = layui.$;
+      //颜色管理器对象
+      let colorpicker = layui.colorpicker;
+      //定义三维视图的主要类
+      let viewer, options, graphicsLayer, polyline;
+
+      //地图初始化函数
+      function init() {
+          //初始化球体
+          initViewer();
+          //初始化标绘图层
+          addGraphicLayer();
+          //纯色线
+          addColorPolyline();
+          //虚线
+          addDotPolyline();
+          //外边框线
+          addOutlinePolyline();
+          //发光线
+          addLightPolyline();
+          //箭头线
+          addArrowPolyline();
+          //流动线
+          addTrailLInlPolyline();
+          //彩虹流动线
+          addRainbowTrailPolyline();
+          //矩形流动线
+          addRectangleTrailPolyline();
+          //加载天地图
+          addTDT();
+          //视点跳转
+          flyTo();
+          //初始化示例UI
+          initUI();
+      }
+
+      //初始化球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          //显示鼠标位置
+          viewer.showPosition();
+      }
+
+      //初始化标绘图层
+      function addGraphicLayer() {
+          graphicsLayer = new Cesium.GraphicsLayer(viewer, {
+              clickGraphic: function (graphic) {
+                  if(!graphic) return;
+                  polyline = graphic;
+                  //更新样式面板
+                  $('#polyline-width').val(polyline.style.width);
+                  colorpicker.render({
+                      elem: '#polyline-color'
+                      ,color: polyline.style.color.toCssHexString()
+                      ,done: function(color){
+                          $('#polyline-color-input').val(color);
+                          polyline.style.color = Cesium.Color.fromCssColorString(color);
+                      }
+                  });
+                  //这个时候展开编辑面板
+                  $('#editPanel').show();
+              }
+          });
+      }
+
+      //纯色线
+      function addColorPolyline() {
+          let polylineGraphic = new Cesium.Graphic({
+              //类型
+              type: 'polyline',
+              //几何数组
+              positions: [Cesium.Cartesian3.fromDegrees(113.9454, 29.9987, 0), Cesium.Cartesian3.fromDegrees(113.9846, 29.9987, 0)],
+              //样式
+              style: {
+                  //颜色
+                  color: Cesium.Color.AQUA,
+                  //宽度
+                  width: 4
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(polylineGraphic);
+      }
+
+      //虚线
+      function addDotPolyline() {
+          let polylineGraphic2 = new Cesium.Graphic({
+              //类型
+              type: 'polyline',
+              //几何数组
+              positions: [Cesium.Cartesian3.fromDegrees(113.9454, 29.9887, 0), Cesium.Cartesian3.fromDegrees(113.9846, 29.9887, 0)],
+              //样式
+              style: {
+                  //宽度
+                  width: 4,
+                  //虚线材质
+                  material: Cesium.Material.fromType('PolylineDash', {
+                      //线颜色
+                      color: Cesium.Color.BLUE,
+                      //间隔颜色
+                      gapColor: Cesium.Color.YELLOW,
+                      //间隔长度
+                      dashPattern: 240
+                  })
+              }
+          })
+          //将标绘点添加入标绘图层
+          graphicsLayer.addGraphic(polylineGraphic2);
+      }
+
+      //添加外边框线
+      function addOutlinePolyline() {
+          let polylineGraphic4 = new Cesium.Graphic({
+              //类型
+              type: 'polyline',
+              //几何数组
+              positions: [Cesium.Cartesian3.fromDegrees(113.9454, 29.9787, 0), Cesium.Cartesian3.fromDegrees(113.9846, 29.9787, 0)],
+              //样式
+              style: {
+                  //线宽
+                  width: 16,
+                  //外边线材质
+                  material: Cesium.Material.fromType('PolylineOutline', {
+                      //线颜色
+                      color: new Cesium.Color(1.0, 1.0, 1.0, 1.0),
+                      //外边线颜色
+                      outlineColor: new Cesium.Color(1.0, 0.0, 0.0, 1.0),
+                      //外边线宽度
+                      outlineWidth: 8
+                  })
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(polylineGraphic4);
+      }
+
+      //发光线
+      function addLightPolyline() {
+          let polylineGraphic5 = new Cesium.Graphic({
+              //类型
+              type: 'polyline',
+              //线几何数组
+              positions: [Cesium.Cartesian3.fromDegrees(113.9454, 29.9687, 0), Cesium.Cartesian3.fromDegrees(113.9846, 29.9687, 0)],
+              //样式
+              style: {
+                  //线宽
+                  width: 8,
+                  //发光线材质
+                  material: Cesium.Material.fromType('PolylineGlow', {
+                      //发光颜色
+                      color: Cesium.Color.YELLOW,
+                      //线尾发光比例
+                      glowPower: 0.5,
+                      //线头发光比例
+                      taperPower: 0.1
+                  })
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(polylineGraphic5);
+      }
+
+      //箭头线
+      function addArrowPolyline() {
+          let polylineGraphic6 = new Cesium.Graphic({
+              //类型
+              type: 'polyline',
+              //线几何数组
+              positions: [Cesium.Cartesian3.fromDegrees(113.9454, 29.9587, 0), Cesium.Cartesian3.fromDegrees(113.9846, 29.9587, 0)],
+              //样式
+              style: {
+                  //线宽
+                  width: 8,
+                  //箭头线材质
+                  material: Cesium.Material.fromType('PolylineArrow')
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(polylineGraphic6);
+      }
+
+      //流动线
+      function addTrailLInlPolyline() {
+          let polylineGraphic7 = new Cesium.Graphic({
+              //类型
+              type: 'polyline',
+              //线几何数组
+              positions: [Cesium.Cartesian3.fromDegrees(113.9949, 30.0002, 0), Cesium.Cartesian3.fromDegrees(114.0306, 30.0002, 0)],
+              //样式
+              style: {
+                  //线宽
+                  width: 10,
+                  //材质
+                  material: Cesium.Material.fromType('PolylineTrailLink', {
+                      //材质图片
+                      image: 'http://192.168.82.89:8200/NoneSpatialData/image/line-arrow-blue.png',
+                      //颜色
+                      color: Cesium.Color.AQUA,
+                      //持续时间
+                      duration: 1000,
+                      //x、y轴重复次数
+                      repeat: new Cesium.Cartesian2(8, 1),
+                  })
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(polylineGraphic7);
+      }
+
+      //彩虹流动线
+      function addRainbowTrailPolyline() {
+          let polylineGraphic8 = new Cesium.Graphic({
+              //类型
+              type: 'polyline',
+              //线几何数组
+              positions: [Cesium.Cartesian3.fromDegrees(113.9949, 29.9902, 0), Cesium.Cartesian3.fromDegrees(114.0306, 29.9902, 0)],
+              //样式
+              style: {
+                  //线宽
+                  width: 8,
+                  //材质
+                  material: Cesium.Material.fromType('PolylineTrailLink', {
+                      //材质图片
+                      image: 'http://192.168.82.89:8200/NoneSpatialData/image/color.png',
+                      //持续时间
+                      duration: 2000,
+                      //x、y轴重复次数
+                      repeat: new Cesium.Cartesian2(1, 1),
+                  })
+              }
+          })
+          //将标绘点添加入标绘图层
+          graphicsLayer.addGraphic(polylineGraphic8);
+      }
+
+      //矩形流动线
+      function addRectangleTrailPolyline() {
+          let polylineGraphic9 = new Cesium.Graphic({
+              //类型
+              type: 'polyline',
+              //线几何
+              positions: [Cesium.Cartesian3.fromDegrees(113.9949, 29.9802, 0), Cesium.Cartesian3.fromDegrees(114.0306, 29.9802, 0),
+                  Cesium.Cartesian3.fromDegrees(114.0306, 29.9702, 0), Cesium.Cartesian3.fromDegrees(113.9949, 29.9702, 0),
+                  Cesium.Cartesian3.fromDegrees(113.9949, 29.9802, 0)],
+              //样式
+              style: {
+                  //线宽
+                  width: 20,
+                  material: Cesium.Material.fromType('PolylineTrailLink', {
+                      //材质图片
+                      image: 'http://192.168.82.89:8200/NoneSpatialData/image/line-arrow-dovetail.png',
+                      //持续时间
+                      duration: 2000,
+                      //x、y轴重复次数
+                      repeat: new Cesium.Cartesian2(10.0, 1.0)
+                  })
+              }
+          })
+          //将标绘点添加入标绘图层
+          graphicsLayer.addGraphic(polylineGraphic9);
+      }
+      //加载天地图底图
+      function addTDT() {
+               let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      //视点跳转
+      function flyTo() {
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(113.9894, 29.9792, 10000),
+              duration: 2
+          });
+      }
+
+      //初始化示例UI
+      function initUI() {
+          //示例UI相关代码
+          layui.use('colorpicker', function(){
+              //线宽
+              $("#polyline-width").bind("input propertychange", function () {
+                  polyline.style.width = Number($('#polyline-width').val());
+              })
+
+              //填充颜色
+              colorpicker.render({
+                  elem: '#polyline-color'
+                  ,color: '#9dfafe'
+                  ,done: function(color){
+                      $('#polyline-color-input').val(color);
+                      polyline.style.color = Cesium.Color.fromCssColorString(color);
+                  }
+              });
+          });
+      }
+
+      function startDrawing() {
+          graphicsLayer.startDrawing({
+              type: 'polyline',
+              style: {
+                  color: Cesium.Color.fromCssColorString($('#polyline-color-input').val()),
+                  width: Number($('#polyline-width').val())
+              }
+          });
+      }
+
+      function stopDrawing() {
+          graphicsLayer.stopDrawing();
+      }
+
+      function deletePolyline(){
+          polyline.remove();
+          $('#editPanel').hide();
+      }
+
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+<div class="layui-panel layui-panel-right" style="text-align: center;width: 140px;padding: 10px;">
+  <button onclick="startDrawing()" style="width:auto;margin:0 auto !important;" type="button" class="layui-btn layui-btn-normal graphic-button-margin">添加线</button>
+</div>
+<div class="layui-panel layui-panel-right"  id="editPanel" style="display: none;top: 70px;">
+  <form class="layui-form" action="">
+    <div class="sample-main-panel">
+      <div class="layui-form-item">
+        <label class="layui-form-label">填充颜色</label>
+        <div class="layui-input-inline" style="width: 145px;margin-left:10px;">
+          <input disabled type="text" value="#00ffff" class="layui-input" id="polyline-color-input">
+        </div>
+        <div class="layui-inline">
+          <div id="polyline-color"></div>
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <label class="layui-form-label">线宽</label>
+        <div class="layui-input-block">
+          <input id="polyline-width" value="8" type="text" name="title" lay-verify="title" autocomplete="off" class="layui-input">
+        </div>
+      </div>
+    </div>
+    <div class="sample-button-panel">
+      <button onclick="$('#editPanel').hide()" style="float: right;width:auto;margin-right: 0 !important;" type="button" class="layui-btn layui-btn-normal graphic-button-margin">关闭面板</button>
+      <span onclick="deletePolyline()" style="cursor:pointer;float: right;line-height: 32px;margin-right: 15px;">删除线</span>
+    </div>
+  </form>
+</div>
+</body>
+
+</html>

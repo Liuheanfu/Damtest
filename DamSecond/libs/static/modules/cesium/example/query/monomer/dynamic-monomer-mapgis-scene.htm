@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <meta charset='utf-8'/>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+    <title>动态单体化(MapGIS场景服务)</title>
+    <!--引入第三方的jquery脚本库-->
+    <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+    <!--cesium样式-->
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+    <!--示例公共样式-->
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+    <script>
+    'use strict';
+    //定义三维视图的主要类
+    let viewer;
+    //当前鼠标点击点信息
+    let curMovement;
+    //提示框
+    let nameOverlay;
+    //graphicsLayer
+    let graphicsLayer;
+    let layerIndex;
+    let sceneLayer;
+    let curIndex;
+
+    //地图初始化函数
+    function init() {
+        //初始化球体
+        initViewer();
+        //添加M3D数据
+        addM3D();
+        //初始化查询操作
+        initQuery();
+    }
+
+    //构造三维视图类（视图容器div的id，三维视图设置参数）
+    function initViewer() {
+        viewer = new Cesium.Viewer("mapgis-3d-viewer", {});
+        graphicsLayer = new Cesium.GraphicsLayer(viewer, {});
+    }
+
+    //添加M3D数据
+    function addM3D() {
+        var url = 'http://webclient.smaryun.com:8089/igs/rest/g3d/Scene:DaYanTa-动态单体化';
+        var options = {
+            loadAll: true,
+            getDocLayerIndexes: function (indexs) {
+                // 存储单图层
+                layerIndex = indexs[0];
+                sceneLayer = viewer.scene.layers.getLayer(indexs[0]);
+                var layerindexes = sceneLayer.getM3DLayerIndexes();
+                curIndex = layerindexes[0];
+            }
+        };
+        viewer.scene.layers.appendSceneLayer(url, options);
+    }
+
+    //初始化查询操作
+    function initQuery() {
+        //创建OID提示框
+        nameOverlay = document.createElement('div');
+        viewer.container.appendChild(nameOverlay);
+        nameOverlay.className = 'backdrop';
+        nameOverlay.style.display = 'none';
+        nameOverlay.style.position = 'absolute';
+        nameOverlay.style.bottom = '0';
+        nameOverlay.style.left = '0';
+        nameOverlay.style['pointer-events'] = 'none';
+        nameOverlay.style.padding = '4px';
+        nameOverlay.style.backgroundColor = 'white';
+
+        //设置点击函数
+        viewer.screenSpaceEventHandler.setInputAction(function onLeftClick(movement) {
+            curMovement = movement;
+            //根据鼠标点击拾取要素
+            var cartesian = viewer.scene.pickPosition(curMovement.position);
+            if (Cesium.defined(cartesian)) {
+                var cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+                var lng = Cesium.Math.toDegrees(cartographic.longitude);
+                var lat = Cesium.Math.toDegrees(cartographic.latitude);
+                var height = cartographic.height;
+                var mapPosition = {x: lng, y: lat, z: height};
+                sceneLayer = viewer.scene.layers.getLayer(layerIndex);
+                // 请求地址不正确，先给固定result
+                let result = {
+                    "AttStruct": {
+                        "FldNumber": 10,
+                        "FldName": ["ID", "mpArea", "mpPerimete", "mpName", "底面高程", "楼层", "层高", "mpPerimeter", "Euid", "mpLayer"],
+                        "FldType": ["long", "double", "double", "string", "string", "string", "string", "double", "string", "long"],
+                        "FldAlias": ["", "面积", "", null, null, null, null, "周长", null, "图层"]
+                    }, "SFEleArray": [{
+                        "bound": {"xmin": 108.95929188964448, "ymin": 34.21966504305977, "xmax": 108.95958283492527, "ymax": 34.219903638388764, "zmin": 0.0, "zmax": 0.0},
+                        "ftype": "Reg",
+                        "FID": 29,
+                        "AttValue": ["23", "6.785776986670686E-8", "77.809502", "大雁塔", "439", "2", "10", "0.0010474288052077763", "10001", "0"],
+                        "fGeom": {
+                            "PntGeom": [],
+                            "G3DPntGeom": [],
+                            "LinGeom": [],
+                            "G3DLinGeom": [],
+                            "RegGeom": [{
+                                "Rings": [{
+                                    "Arcs": [{
+                                        "Dots": [{"x": 108.95929189628546, "y": 34.21966843575019}, {"x": 108.95929190505234, "y": 34.21966901996505}, {
+                                            "x": 108.95929572923505,
+                                            "y": 34.219903638388764
+                                        }, {"x": 108.95929646453808, "y": 34.219903627206875}, {"x": 108.95943815800024, "y": 34.219901472362416}, {
+                                            "x": 108.95957912588204,
+                                            "y": 34.21989933664402
+                                        }, {"x": 108.9595798676907, "y": 34.21989933087822}, {"x": 108.95958060949934, "y": 34.2198993251124}, {
+                                            "x": 108.95958283492527,
+                                            "y": 34.21989930781494
+                                        }, {"x": 108.959581502076, "y": 34.219666764799925}, {"x": 108.95957927665616, "y": 34.21966678209726}, {
+                                            "x": 108.9595792666888,
+                                            "y": 34.21966504305977
+                                        }, {"x": 108.9594355781706, "y": 34.21966615980992}, {"x": 108.95929188964448, "y": 34.219667276391775}, {"x": 108.95929189628546, "y": 34.21966843575019}],
+                                        "ArcID": 0
+                                    }]
+                                }], "GID": 0
+                            }],
+                            "G3DRegionGeom": [],
+                            "SurfaceGeom": [],
+                            "EntityGeom": []
+                        },
+                        "GraphicInfo": null
+                    }], "TotalCount": 1
+                };
+                monomerizationCallback(result);
+                // sceneLayer.Monomerization(
+                //     function callback(result) {
+                //         monomerizationCallback(result)
+                //     },
+                //     {
+                //         position: new Cesium.Cartesian3(mapPosition.x, mapPosition.y, mapPosition.z),
+                //         tolerance: 0.00001,
+                //         layerIndex: curIndex
+                //     }
+                // );
+            }
+        }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    }
+
+    //请求数据完成的回调
+    function monomerizationCallback(result) {
+        if (!result) {
+            return false;
+        }
+        //先移除之前的区域高亮
+        removePolygon();
+        // result.SFEleArray是数组，但只有一组数据
+        for (var i = 0; i < result.SFEleArray.length; i++) {
+            let html =
+                '<table>' +
+                '<tbody>' +
+                '<tr>' +
+                '<th>FID：</th>' +
+                '<td>' + result.SFEleArray[i].AttValue[0] + '</td>' +
+                '</tr>' +
+                '<tr>' +
+                '<th>名称：</th>' +
+                '<td>' + result.SFEleArray[i].AttValue[3] + '</td>' +
+                '</tr>' +
+                '<tr>' +
+                '<th>楼层：</th>' +
+                '<td>' + result.SFEleArray[i].AttValue[5] + '</td>' +
+                '</tr>' +
+                '<tr>' +
+                '<th>层高：</th>' +
+                '<td>' + result.SFEleArray[i].AttValue[6] + '</td>' +
+                '</tr>' +
+                '</tbody>' +
+                '</table>';
+            //添加polygon高亮
+            addPolygon(result.SFEleArray[i].fGeom.RegGeom[0].Rings[0].Arcs[0].Dots);
+            //更新弹框数据
+            nameOverlay.style.display = 'block';
+            nameOverlay.style.bottom = viewer.canvas.clientHeight - curMovement.position.y + 'px';
+            nameOverlay.style.left = curMovement.position.x + 'px';
+            nameOverlay.innerHTML = html;
+        }
+    }
+
+    //添加polygon高亮
+    function addPolygon(dots) {
+        let positions = [];
+        for (let item of dots) {
+            positions.push(Cesium.Cartesian3.fromDegrees(item.x, item.y, 0));
+        }
+        let polygonGraphic = new Cesium.Graphic({
+            type: 'polygon',
+            positions: positions,
+            style: {
+                translucent: true,
+                color: Cesium.Color.RED.withAlpha(0.4),
+                classificationType: Cesium.ClassificationType.CESIUM_3D_TILE
+            }
+        })
+        //将标绘点添加入标绘图层
+        graphicsLayer.addGraphic(polygonGraphic);
+    }
+
+    //移除polygon
+    function removePolygon() {
+        graphicsLayer.removeAllGraphic();
+    }
+
+    </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+</body>
+
+</html>

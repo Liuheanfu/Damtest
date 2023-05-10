@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>场景化参数</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      "use strict";
+      //定义三维视图的主要类
+      let viewer;
+
+      //地图初始化函数
+      function init() {
+          //初始化球体
+          initViewer()
+          //飞到指定视角
+          flyTo();
+          //初始化示例UI操作
+          initUI();
+      }
+
+      //初始化球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer("mapgis-3d-viewer", {});
+          //显示鼠标位置
+          viewer.showPosition();
+      }
+
+      //飞到指定视角
+      function flyTo() {
+          //飞到指定视角
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(116.5258, 41.8054, 20000000)
+          });
+      }
+
+      //加载Cesium自带地形
+      function initTerrain() {
+          viewer.terrainProvider = new Cesium.CesiumTerrainProvider({
+              url: Cesium.IonResource.fromAssetId(3956),
+              requestWaterMask: true,
+              requestVertexNormals: true,
+          });
+      }
+
+      //初始化示例UI操作
+      function initUI() {
+          layui.use(function () {
+              var layer = layui.layer,
+                  $ = layui.jquery,
+                  form = layui.form;
+
+              form.on("switch(skyAtmosphere)", function (data) {
+                  // 是否显示地球外圈大气
+                  viewer.scene.skyAtmosphere.show = data.elem.checked;
+              });
+              form.on("switch(sun)", function (data) {
+                  // 是否显示太阳
+                  viewer.scene.sun.show = data.elem.checked;
+              });
+              form.on("switch(moon)", function (data) {
+                  // 是否显示月亮
+                  viewer.scene.moon.show = data.elem.checked;
+              });
+              form.on("switch(skyBox)", function (data) {
+                  // 是否显示天空盒，即地球背景的星空
+                  viewer.scene.skyBox.show = data.elem.checked;
+              });
+              form.on("switch(fxaa)", function (data) {
+                  // 是否开启抗锯齿
+                  viewer.scene.fxaa = data.elem.checked;
+                  viewer.scene.postProcessStages.fxaa.enabled = data.elem.checked;
+              });
+              form.on("switch(HDR)", function (data) {
+                  // 是否开启HDR
+                  viewer.scene.highDynamicRange = data.elem.checked;
+              });
+              form.on("switch(fog)", function (data) {
+                  // 是否开启雾化效果，需要缩放至近地面查看效果
+                  viewer.scene.fog.enabled = data.elem.checked;
+              });
+              form.on("switch(earth)", function (data) {
+                  // 是否显示地球
+                  viewer.scene.globe.show = data.elem.checked;
+              });
+              form.on("switch(terrain)", function (data) {
+                  initTerrain();
+                  if($("#terrainExLabel").css("display") === "none") {
+                      $("#terrainExLabel").css("display", "block");
+                  }else {
+                      $("#terrainExLabel").css("display", "none");
+                  }
+              });
+              form.on("switch(groundAtmosphere)", function (data) {
+                  // 是否开启地球表层大气
+                  viewer.scene.globe.showGroundAtmosphere = data.elem.checked;
+              });
+              form.on("switch(depthTest)", function (data) {
+                  // 是否开启深度检测
+                  viewer.scene.globe.depthTestAgainstTerrain = data.elem.checked;
+              });
+              // 是否显示地球底图
+              form.on("switch(baseMap)", function (data) {
+                  if (data.elem.checked !== undefined) {
+                      let num = viewer.scene.globe.imageryLayers._layers.length;
+                      for (let i = 0; i < num; i++) {
+                          viewer.scene.globe.imageryLayers.get(i).show = data.elem.checked;
+                      }
+                  }
+                  return false;
+              });
+              // 是否开启太阳光照效果，开启后可以看到地球的晨昏效果
+              form.on("switch(lighting)", function (data) {
+                  viewer.scene.globe.enableLighting = data.elem.checked;
+              });
+              // 是否允许滚轮缩放地球
+              form.on("switch(zoom)", function (data) {
+                  viewer.scene.screenSpaceCameraController.enableZoom =
+                      data.elem.checked;
+              });
+              // 是否允许倾斜地球角度
+              form.on("switch(tilt)", function (data) {
+                  viewer.scene.screenSpaceCameraController.enableTilt =
+                      data.elem.checked;
+              });
+              // 是否允许旋转地球
+              form.on("switch(rotate)", function (data) {
+                  viewer.scene.screenSpaceCameraController.enableRotate =
+                      data.elem.checked;
+              });
+              // 是否允许地球平移
+              form.on("switch(translate)", function (data) {
+                  viewer.scene.screenSpaceCameraController.enableTranslate =
+                      data.elem.checked;
+              });
+              // 是否显示鼠标的经纬度等位置信息
+              form.on("switch(position)", function (data) {
+                  if(data.elem.checked) {
+                      viewer.showPosition();
+                  }else {
+                      viewer.hidePosition();
+                  }
+              });
+
+              let colorpicker = layui.colorpicker;
+              //地球底色，关闭底图后可以预览效果
+              colorpicker.render({
+                  elem: "#baseColor", //绑定元素
+                  color: "rgba(0,0,255*0.5,1)",
+                  change: function (color) {
+                      viewer.scene.globe.baseColor =
+                          Cesium.Color.fromCssColorString(color);
+                  },
+              });
+              // 宇宙背景色，关闭天空盒后可以看见效果
+              colorpicker.render({
+                  elem: "#bgColor",
+                  color: "rgba(0,0,0,1)",
+                  change: function (color) {
+                      viewer.scene.backgroundColor =
+                          Cesium.Color.fromCssColorString(color);
+                  },
+              });
+
+              let slider = layui.slider;
+              //地形夸张倍数
+              slider.render({
+                  elem: "#terrainEx",
+                  value: 1.0,
+                  theme: 'rgb(102 147 251)',
+                  change: function (value) {
+                      viewer.scene.globe.terrainExaggeration = value;
+                  },
+              });
+              // 相机缩放的最近距离（米），默认为1.0
+              slider.render({
+                  elem: "#minZoomDis",
+                  value: 1.0,
+                  max: 1000000,
+                  theme: 'rgb(102 147 251)',
+                  //自定义提示文本
+                  setTips: function (value) {
+                      return value + '米';
+                  },
+                  change: function (value) {
+                      viewer.scene.screenSpaceCameraController.minimumZoomDistance =
+                          value;
+                  },
+              });
+              // 相机缩放的最远距离（米），默认为Number.POSITIVE_INFINITY
+              slider.render({
+                  elem: "#maxZoomDis",
+                  max: 100000000,
+                  value: 100000000,
+                  theme: 'rgb(102 147 251)',
+                  //自定义提示文本
+                  setTips: function (value) {
+                      return value + '米';
+                  },
+                  change: function (value) {
+                      viewer.scene.screenSpaceCameraController.maximumZoomDistance =
+                          value;
+                  },
+              });
+          });
+      }
+  </script>
+  <style>
+    .layui-form-item .layui-inline {
+      margin-right: 3px;
+    }
+    .sample-slider {
+      width: 180px;
+    }
+  </style>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right">
+  <div class="layui-tab">
+    <ul class="layui-tab-title">
+      <li class="layui-this">scene参数</li>
+      <li>globe参数</li>
+      <li>交互参数</li>
+    </ul>
+    <div class="layui-tab-content">
+      <div class="layui-tab-item layui-show">
+        <form class="layui-form" action="">
+          <!-- scene参数 -->
+          <div class="layui-form-item">
+            <label class="layui-form-label">大气层</label>
+            <div class="layui-input-block">
+              <input
+                type="checkbox"
+                lay-filter="skyAtmosphere"
+                lay-skin="switch"
+                lay-text="显示|隐藏"
+                checked
+              />
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label">太阳</label>
+            <div class="layui-input-block">
+              <input
+                type="checkbox"
+                lay-filter="sun"
+                lay-skin="switch"
+                lay-text="显示|隐藏"
+                checked
+              />
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label">月亮</label>
+            <div class="layui-input-block">
+              <input
+                type="checkbox"
+                lay-filter="moon"
+                lay-skin="switch"
+                lay-text="显示|隐藏"
+                checked
+              />
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label">天空盒</label>
+            <div class="layui-input-block">
+              <input
+                type="checkbox"
+                lay-filter="skyBox"
+                lay-skin="switch"
+                lay-text="显示|隐藏"
+                checked
+              />
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label">宇宙背景色</label>
+            <div class="layui-input-block">
+              <div id="bgColor"></div>
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label">抗锯齿</label>
+            <div class="layui-input-block">
+              <input
+                type="checkbox"
+                lay-filter="fxaa"
+                lay-skin="switch"
+                lay-text="开启|关闭"
+              />
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label">HDR</label>
+            <div class="layui-input-block">
+              <input
+                type="checkbox"
+                lay-filter="HDR"
+                lay-skin="switch"
+                lay-text="开启|关闭"
+              />
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label">雾化效果</label>
+            <div class="layui-input-block">
+              <input
+                type="checkbox"
+                lay-filter="fog"
+                lay-skin="switch"
+                lay-text="开启|关闭"
+                checked
+              />
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="layui-tab-item">
+        <form class="layui-form" action="">
+          <!-- globe参数 -->
+          <div class="layui-form-item">
+            <label class="layui-form-label">地球</label>
+            <div class="layui-input-block">
+              <input
+                type="checkbox"
+                lay-filter="earth"
+                lay-skin="switch"
+                lay-text="显示|隐藏"
+                checked
+              />
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label">加载地形</label>
+            <div class="layui-input-block">
+              <input
+                type="checkbox"
+                lay-filter="terrain"
+                lay-skin="switch"
+                lay-text="显示|隐藏"
+                unchecked
+              />
+            </div>
+          </div>
+          <div class="layui-form-item" id="terrainExLabel" style="display: none">
+            <label class="layui-form-label">地形夸张</label>
+            <div class="layui-input-block sample-slider">
+              <div id="terrainEx"></div>
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label">光照</label>
+            <div class="layui-input-block">
+              <input
+                type="checkbox"
+                lay-filter="lighting"
+                lay-skin="switch"
+                lay-text="开启|关闭"
+              />
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label">近地面大气</label>
+            <div class="layui-input-block">
+              <input
+                type="checkbox"
+                lay-filter="groundAtmosphere"
+                lay-skin="switch"
+                lay-text="开启|关闭"
+                checked
+              />
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label">深度检测</label>
+            <div class="layui-input-block">
+              <input
+                type="checkbox"
+                lay-filter="depthTest"
+                lay-skin="switch"
+                lay-text="开启|关闭"
+              />
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label">地球底图</label>
+            <div class="layui-input-block">
+              <input
+                type="checkbox"
+                lay-filter="baseMap"
+                lay-skin="switch"
+                lay-text="开启|关闭"
+                checked
+              />
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label">地球底色</label>
+            <div class="layui-input-block">
+              <div id="baseColor"></div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="layui-tab-item">
+        <form class="layui-form" action="">
+          <!-- 交互参数 -->
+          <div class="layui-form-item">
+            <label class="layui-form-label">地球缩放</label>
+            <div class="layui-input-block">
+              <input
+                type="checkbox"
+                lay-filter="zoom"
+                lay-skin="switch"
+                lay-text="开启|关闭"
+                checked
+              />
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label">最近视距</label>
+            <div class="layui-input-block sample-slider">
+              <div id="minZoomDis"></div>
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label">最远视距</label>
+            <div class="layui-input-block sample-slider">
+              <div id="maxZoomDis"></div>
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label">相机倾斜</label>
+            <div class="layui-input-block">
+              <input
+                type="checkbox"
+                lay-filter="tilt"
+                lay-skin="switch"
+                lay-text="开启|关闭"
+                checked
+              />
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label">地球旋转</label>
+            <div class="layui-input-block">
+              <input
+                type="checkbox"
+                lay-filter="rotate"
+                lay-skin="switch"
+                lay-text="开启|关闭"
+                checked
+              />
+            </div>
+          </div>
+          <div class="layui-form-item">
+            <label class="layui-form-label" style="width: 100px">显示鼠标位置</label>
+            <div class="layui-input-block">
+              <input
+                type="checkbox"
+                lay-filter="position"
+                lay-skin="switch"
+                lay-text="显示|隐藏"
+                checked
+              />
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

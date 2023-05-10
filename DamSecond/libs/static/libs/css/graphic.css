@@ -1,0 +1,33 @@
+.layui-form-item .layui-input-inline {
+    float: left;
+    width: 165px;
+    margin-right: 0;
+    margin-left: 3px;
+}
+
+.layui-form-select {
+    width: 183px;
+}
+
+.layui-btn-normal {
+    width: 88px;
+}
+
+.graphic-button-margin {
+    margin-right: 8px!important;
+}
+
+.sample-button-panel {
+    margin-bottom: 0;
+}
+
+.layui-form-item {
+    margin-bottom: 8px;
+}
+
+.sample-button-panel {
+    margin-top: 8px;
+}
+.layui-form-switch{
+    margin-top:5px;
+}

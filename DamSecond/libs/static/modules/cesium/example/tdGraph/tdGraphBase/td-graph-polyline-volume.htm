@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <meta charset='utf-8'/>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+    <title>管线</title>
+    <!--引入第三方的jquery脚本库-->
+    <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+    <!--cesium样式-->
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+    <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+    <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+    <!--示例公共样式-->
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+    <link rel="stylesheet" href="http://localhost:8080/static/libs/css/graphic.css"/>
+    <script>
+        'use strict';
+        //取得jquery对象
+        let $ = layui.$;
+        //颜色管理器对象
+        let colorpicker = layui.colorpicker;
+        //定义三维视图的主要类
+        let viewer, options, graphicsLayer, polylineVolume;
+
+        //地图初始化函数
+        function init() {
+            //初始化球体
+            initViewer();
+            //初始化标绘图层
+            addGraphicLayer();
+            //纯色管线
+            addColorPolylineVolume();
+            //流动管线
+            addTrailPolylineVolume();
+            //网状管线
+            addNetPolylineVolume();
+            //条纹栅格
+            addGridPolylineVolume();
+            //棋盘管线
+            addCheckerboard();
+            //渐隐管线
+            addFadePolylineVolume();
+            //纯色方管线
+            addColorCorridor();
+            //流动方管线
+            addTrailCorridor();
+            //栅格方管线
+            addGridCorridor();
+            //纯色方管线
+            addColorCorridorRoad();
+            //纯色圆管线
+            addColorPolylineVolumeRoad();
+            //加载天地图底图
+            addTDT();
+            //视点跳转
+            flyTo();
+            //初始化示例UI
+            initUI();
+        }
+
+        //初始化球体
+        function initViewer() {
+            //构造三维视图类（视图容器div的id，三维视图设置参数）
+            viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+            //显示鼠标位置
+            viewer.showPosition();
+        }
+
+        //添加标绘图层
+        function addGraphicLayer() {
+            graphicsLayer = new Cesium.GraphicsLayer(viewer, {
+                //点击标绘对象的回调函数
+                clickGraphic: function (graphic) {
+                    if(!graphic) return;
+                    polylineVolume = graphic;
+                    //更新样式面板
+                    if (graphic.type === 'corridor') {
+                        $('#polylineVolume-extrudedHeight').parents('.layui-form-item').show();
+                        $('#polylineVolume-extrudedHeight').val(polylineVolume.style.extrudedHeight);
+                    }else{
+                        $('#polylineVolume-extrudedHeight').parents('.layui-form-item').hide();
+                    }
+                    $('#polylineVolume-width').val(polylineVolume.style.width);
+                    colorpicker.render({
+                        elem: '#polylineVolume-color'
+                        , color: polylineVolume.style.color.toCssHexString()
+                        , done: function (color) {
+                            $('#polylineVolume-color-input').val(color);
+                            polylineVolume.style.color = Cesium.Color.fromCssColorString(color);
+                        }
+                    });
+                    //这个时候展开编辑面板
+                    $('#editPanel').show();
+                }
+            });
+        }
+
+        //纯色管线
+        function addColorPolylineVolume() {
+            let polylineVolumeGraphic = new Cesium.Graphic({
+                //标绘类型
+                type: 'polylineVolume',
+                //标绘位置
+                positions: [Cesium.Cartesian3.fromDegrees(114.4052, 30.4630, 0), Cesium.Cartesian3.fromDegrees(114.4852, 30.4630, 0)],
+                //标绘样式
+                style: {
+                    //颜色
+                    color: Cesium.Color.RED,
+                    // 宽度
+                    width: 100
+                }
+            })
+            //将标绘点添加入标绘图层
+            graphicsLayer.addGraphic(polylineVolumeGraphic);
+        }
+
+        //流动管线
+        function addTrailPolylineVolume() {
+            let polylineVolumeGraphic2 = new Cesium.Graphic({
+                //标绘类型
+                type: 'polylineVolume',
+                //标绘位置
+                positions: [Cesium.Cartesian3.fromDegrees(114.4052, 30.4430, 0), Cesium.Cartesian3.fromDegrees(114.4852, 30.4430, 0)],
+                //标绘样式
+                style: {
+                    // 宽度
+                    width: 100,
+                    // 材质
+                    material: Cesium.Material.fromType(Cesium.Material.PolylineTrailLinkType, {
+                        // 图片url
+                        image: 'http://192.168.82.89:8200/NoneSpatialData/image/lineClr.png',
+                        // 持续时间
+                        duration: 2000,
+                        // 方向
+                        direction: 1.0,
+                        // 颜色
+                        color: Cesium.Color.AQUA,
+                        // x、y轴重复次数
+                        repeat: new Cesium.Cartesian2(4.0, 1.0)
+                    })
+                }
+            })
+            //将标绘添加入标绘图层
+            graphicsLayer.addGraphic(polylineVolumeGraphic2);
+        }
+
+        //网状管线
+        function addNetPolylineVolume() {
+            let polylineVolumeGraphic3 = new Cesium.Graphic({
+                //标绘类型
+                type: 'polylineVolume',
+                //标绘位置
+                positions: [Cesium.Cartesian3.fromDegrees(114.4052, 30.4230, 0), Cesium.Cartesian3.fromDegrees(114.4852, 30.4230, 0)],
+                //标绘样式
+                style: {
+                    // 宽度
+                    width: 100,
+                    // 栅格材质
+                    material: Cesium.Material.fromType(Cesium.Material.GridType, {
+                        // 材质颜色
+                        color: Cesium.Color.CORNFLOWERBLUE,
+                        // 栅格透明度
+                        cellAlpha: 0.2,
+                        // 栅格数量
+                        lineCount: new Cesium.Cartesian2(8.0, 8.0),
+                        // 栅格x、y轴重复次数
+                        lineThickness: new Cesium.Cartesian2(1.0, 1.0),
+                        // 栅格偏移
+                        lineOffset: new Cesium.Cartesian2(0.0, 0.0)
+                    })
+                }
+            })
+            //将标绘添加入标绘图层
+            graphicsLayer.addGraphic(polylineVolumeGraphic3)
+        }
+
+        //条纹栅格
+        function addGridPolylineVolume() {
+            let polylineVolumeGraphic4 = new Cesium.Graphic({
+                //标绘类型
+                type: 'polylineVolume',
+                //标绘位置
+                positions: [Cesium.Cartesian3.fromDegrees(114.4052, 30.4030, 0), Cesium.Cartesian3.fromDegrees(114.4852, 30.4030, 0)],
+                //标绘样式
+                style: {
+                    // 宽度
+                    width: 100,
+                    // 条纹材质
+                    material: Cesium.Material.fromType(Cesium.Material.StripeType, {
+                        // 纵置还是横置
+                        horizontal: false,
+                        // 偶数条纹颜色
+                        evenColor: new Cesium.Color(1.0, 1.0, 1.0, 1),
+                        // 奇数条纹颜色
+                        oddColor: new Cesium.Color(0.0, 0.0, 1.0, 1),
+                        // 偏移量
+                        offset: 0,
+                        // 重复数量
+                        repeat: 40
+                    })
+                }
+            })
+            //将标绘添加入标绘图层
+            graphicsLayer.addGraphic(polylineVolumeGraphic4);
+        }
+
+        //棋盘管线
+        function addCheckerboard() {
+            let polylineVolumeGraphic5 = new Cesium.Graphic({
+                //标绘类型
+                type: 'polylineVolume',
+                //标绘位置
+                positions: [Cesium.Cartesian3.fromDegrees(114.4052, 30.3830, 0), Cesium.Cartesian3.fromDegrees(114.4852, 30.3830, 0)],
+                //标绘样式
+                style: {
+                    //宽度
+                    width: 100,
+                    // 棋盘材质
+                    material: Cesium.Material.fromType(Cesium.Material.CheckerboardType, {
+                        // 浅色棋盘格颜色
+                        lightColor: new Cesium.Color(1.0, 1.0, 1.0, 1),
+                        // 深色棋盘格颜色
+                        darkColor: new Cesium.Color(0.0, 0.0, 0.0, 1),
+                        // x、y轴重复此时
+                        repeat: new Cesium.Cartesian2(10.0, 10.0)
+                    })
+                }
+            })
+            //将标绘添加入标绘图层
+            graphicsLayer.addGraphic(polylineVolumeGraphic5);
+        }
+
+        //渐隐管线
+        function addFadePolylineVolume() {
+            let polylineVolumeGraphic6 = new Cesium.Graphic({
+                //标绘类型
+                type: 'polylineVolume',
+                //标绘位置
+                positions: [Cesium.Cartesian3.fromDegrees(114.4052, 30.3630, 0), Cesium.Cartesian3.fromDegrees(114.4852, 30.3630, 0)],
+                //标绘样式
+                style: {
+                    // 宽度
+                    width: 100,
+                    // 渐隐材质
+                    material: Cesium.Material.fromType(Cesium.Material.FadeType, {
+                        // 淡入颜色
+                        fadeInColor: new Cesium.Color(1.0, 0.0, 0.0, 1.0),
+                        // 淡出颜色
+                        fadeOutColor: new Cesium.Color(0.0, 0.0, 0.0, 0.0),
+                        // 最大渐变距离
+                        maximumDistance: 0.5,
+                        // 是否同步
+                        repeat: true,
+                        // 渐隐方向
+                        fadeDirection: {
+                            x: true,
+                            y: true
+                        }
+                    })
+                }
+            })
+            //将标绘添加入标绘图层
+            graphicsLayer.addGraphic(polylineVolumeGraphic6);
+        }
+
+        //纯色方管线
+        function addColorCorridor() {
+            let polylineVolumeGraphic7 = new Cesium.Graphic({
+                //标绘类型
+                type: 'corridor',
+                //标绘位置
+                positions: [Cesium.Cartesian3.fromDegrees(114.5052, 30.4630, 0), Cesium.Cartesian3.fromDegrees(114.5852, 30.4630, 0)],
+                //标绘样式
+                style: {
+                    // 颜色
+                    color: Cesium.Color.MEDIUMPURPLE,
+                    // 宽度
+                    width: 300,
+                    // 拉伸高度
+                    extrudedHeight: 600
+                }
+            })
+            //将标绘点添加入标绘图层
+            graphicsLayer.addGraphic(polylineVolumeGraphic7)
+        }
+
+        //流动方管线
+        function addTrailCorridor() {
+            let polylineVolumeGraphic8 = new Cesium.Graphic({
+                //标绘类型
+                type: 'corridor',
+                //标绘位置
+                positions: [Cesium.Cartesian3.fromDegrees(114.5052, 30.4430, 0), Cesium.Cartesian3.fromDegrees(114.5852, 30.4430, 0)],
+                //标绘样式
+                style: {
+                    //颜色
+                    color: Cesium.Color.RED,
+                    // 宽度
+                    width: 300,
+                    // 拉伸高度
+                    extrudedHeight: 600,
+                    // 材质
+                    material: Cesium.Material.fromType(Cesium.Material.PolylineTrailLinkType, {
+                        // 图片url
+                        image: 'http://192.168.82.89:8200/NoneSpatialData/image/color1.png',
+                        // 流动速度
+                        duration: 2000,
+                        // 流动方向
+                        direction: 1.0,
+                        // x、y轴重复此时
+                        repeat: new Cesium.Cartesian2(1.0, 1.0)
+                    })
+                }
+            })
+            //将标绘点添加入标绘图层
+            graphicsLayer.addGraphic(polylineVolumeGraphic8);
+        }
+
+        //栅格方管线
+        function addGridCorridor() {
+            let polylineVolumeGraphic9 = new Cesium.Graphic({
+                //标绘类型
+                type: 'corridor',
+                //标绘位置
+                positions: [Cesium.Cartesian3.fromDegrees(114.5052, 30.4230, 0), Cesium.Cartesian3.fromDegrees(114.5852, 30.4230, 0)],
+                //标绘样式
+                style: {
+                    // 颜色
+                    color: Cesium.Color.RED,
+                    // 宽度
+                    width: 300,
+                    // 拉伸高度
+                    extrudedHeight: 600,
+                    // 栅格材质
+                    material: Cesium.Material.fromType(Cesium.Material.GridType, {
+                        // 颜色
+                        color: Cesium.Color.ORANGE,
+                        // 栅格透明度
+                        cellAlpha: 0.2,
+                        // xy轴栅格数量
+                        lineCount: new Cesium.Cartesian2(4.0, 4.0),
+                        // 删厚度
+                        lineThickness: new Cesium.Cartesian2(1.0, 1.0),
+                        // 栅格偏移
+                        lineOffset: new Cesium.Cartesian2(0.0, 0.0)
+                    })
+                }
+            })
+            //将标绘点添加入标绘图层
+            graphicsLayer.addGraphic(polylineVolumeGraphic9);
+        }
+
+        //纯色方管线
+        function addColorCorridorRoad() {
+            let polylineVolumeGraphic10 = new Cesium.Graphic({
+                //标绘类型
+                type: 'corridor',
+                //标绘位置
+                positions: [Cesium.Cartesian3.fromDegrees(114.5052, 30.4030, 0), Cesium.Cartesian3.fromDegrees(114.5452, 30.4030, 0),
+                    Cesium.Cartesian3.fromDegrees(114.5452, 30.3630, 0), Cesium.Cartesian3.fromDegrees(114.5052, 30.3630, 0),
+                    Cesium.Cartesian3.fromDegrees(114.5052, 30.4030, 0)],
+                //标绘样式
+                style: {
+                    // 颜色
+                    color: Cesium.Color.YELLOW,
+                    // 宽度
+                    width: 300,
+                    // 拉伸高度
+                    extrudedHeight: 600,
+                }
+            })
+            //将标绘点添加入标绘图层
+            graphicsLayer.addGraphic(polylineVolumeGraphic10);
+        }
+
+        //纯色圆管线
+        function addColorPolylineVolumeRoad() {
+            let polylineVolumeGraphic11 = new Cesium.Graphic({
+                //标绘类型
+                type: 'polylineVolume',
+                //标绘位置
+                positions: [Cesium.Cartesian3.fromDegrees(114.5552, 30.4030, 0), Cesium.Cartesian3.fromDegrees(114.5952, 30.4030, 0),
+                    Cesium.Cartesian3.fromDegrees(114.5952, 30.3930, 0), Cesium.Cartesian3.fromDegrees(114.5552, 30.3930, 0),
+                    Cesium.Cartesian3.fromDegrees(114.5552, 30.3830, 0), Cesium.Cartesian3.fromDegrees(114.5952, 30.3830, 0),
+                    Cesium.Cartesian3.fromDegrees(114.5952, 30.3730, 0), Cesium.Cartesian3.fromDegrees(114.5552, 30.3730, 0)],
+                //标绘样式
+                style: {
+                    // 颜色
+                    color: Cesium.Color.LIGHTSKYBLUE,
+                    // 宽度
+                    width: 300,
+                    // 拉伸高度
+                    extrudedHeight: 600,
+                }
+            })
+            //将标绘点添加入标绘图层
+            graphicsLayer.addGraphic(polylineVolumeGraphic11);
+        }
+
+        //加载天地图
+        function addTDT() {
+            let options = {
+                //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+                url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+                //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+                layer: "vec",
+                //瓦片样式
+                style: "default",
+                //比例尺
+                tileMatrixSetID: "w",
+                //请求格式
+                format: "tiles"
+            }
+            viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+        }
+
+        //视点跳转
+        function flyTo() {
+            viewer.camera.flyTo({
+                destination: Cesium.Cartesian3.fromDegrees(114.4965, 30.4125, 30000),
+                duration: 2
+            });
+        }
+
+        //初始化示例UI
+        function initUI() {
+            layui.use('colorpicker', function () {
+                //拉伸高度
+                $("#polylineVolume-extrudedHeight").bind("input propertychange", function () {
+                    if (polylineVolume && polylineVolume.type === 'corridor') {
+                        polylineVolume.style.extrudedHeight = Number($('#polylineVolume-extrudedHeight').val());
+                    }
+                })
+
+                $("#polylineVolume-width").bind("input propertychange", function () {
+                    if (polylineVolume) {
+                        polylineVolume.style.width = Number($('#polylineVolume-width').val());
+                    }
+                })
+
+                //填充颜色
+                colorpicker.render({
+                    elem: '#polylineVolume-color'
+                    , color: '#9dfafe'
+                    , done: function (color) {
+                        $('#polylineVolume-color-input').val(color);
+                        if (polylineVolume) {
+                            polylineVolume.style.color = Cesium.Color.fromCssColorString(color);
+                        }
+                    }
+                });
+            });
+        }
+
+        function startDrawingPolylineVolume() {
+            // 展示面板
+            $('#editPanel').show()
+            // 宽度input框中value中的设置(添加默认值)
+            var width = Number($('#polylineVolume-width').val()) ? Number($('#polylineVolume-width').val()) : 600
+            graphicsLayer.startDrawing({
+                type: 'polylineVolume',
+                style: {
+                    // 颜色
+                    color: Cesium.Color.fromCssColorString($('#polylineVolume-color-input').val()),
+                    // 宽度
+                    width: width
+                }
+            });
+        }
+
+        function startDrawingCorridor() {
+            graphicsLayer.startDrawing({
+                type: 'corridor',
+                style: {
+                    // 颜色
+                    color: Cesium.Color.LIGHTSKYBLUE,
+                    // 宽度
+                    width: 300,
+                    // 拉伸高度
+                    extrudedHeight: 600,
+                }
+            });
+        }
+
+        function stopDrawing() {
+            graphicsLayer.stopDrawing();
+        }
+
+        function deletePolylineVolume() {
+            polylineVolume.remove();
+            $('#editPanel').hide();
+        }
+
+    </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right" style="text-align: center;width: 140px;padding: 10px;">
+    <button onclick="startDrawingPolylineVolume()" style="width:auto;margin:0 auto !important;" type="button"
+            class="layui-btn layui-btn-normal graphic-button-margin">添加管线
+    </button>
+</div>
+<div class="layui-panel layui-panel-right" id="editPanel" style="display: none;top: 70px;">
+    <form class="layui-form" action="">
+        <div class="sample-main-panel">
+            <div class="layui-form-item">
+                <label class="layui-form-label">填充颜色</label>
+                <div class="layui-input-inline" style="width: 145px;margin-left:10px;">
+                    <input type="text" value="#00ffff" placeholder="填充颜色" class="layui-input"
+                           id="polylineVolume-color-input">
+                </div>
+                <div class="layui-inline">
+                    <div id="polylineVolume-color"></div>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">宽度</label>
+                <div class="layui-input-block">
+                    <input id="polylineVolume-width" value="300" type="text" name="title" lay-verify="title"
+                           autocomplete="off"
+                           class="layui-input">
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">拉伸高度</label>
+                <div class="layui-input-block">
+                    <input id="polylineVolume-extrudedHeight" value="0" type="text" name="title" lay-verify="title"
+                           autocomplete="off"
+                           class="layui-input">
+                </div>
+            </div>
+        </div>
+        <div class="sample-button-panel">
+            <button onclick="$('#editPanel').hide()" style="float: right;width:auto;margin-right: 0 !important;"
+                    type="button" class="layui-btn layui-btn-normal graphic-button-margin">关闭面板
+            </button>
+            <span onclick="deletePolylineVolume()"
+                  style="cursor:pointer;float: right;line-height: 32px;margin-right: 15px;">删除管线</span>
+        </div>
+    </form>
+</div>
+</body>
+
+</html>

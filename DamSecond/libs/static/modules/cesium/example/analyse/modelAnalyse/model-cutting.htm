@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+  <title>剖切工具</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css" />
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css" />
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/tool.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer = null;
+      let layerList = [];
+      //剖切工具
+      let cutTool = null;
+      //绘制工具
+      let drawElement = null;
+
+      //地图初始化函数
+      function init() {
+          //初始化三维球体
+          initViewer();
+          //三维试图类构造完毕，添加多个模型
+          addModels();
+          //模型添加完毕了之后，创建一个cutting的工具
+          addCuttingTool();
+          //简单切面位置控制的滑块条
+          addSlideBar();
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          //为了更好的展示模型的剖切，去掉地球
+          viewer.scene.globe.show = false;
+      }
+
+      //添加一个剖切工具
+      function addCuttingTool(){
+          if(layerList.length===2){
+              //代表模型都添加完了
+              cutTool = new Cesium.CuttingTool(viewer, layerList,{
+                  onErrorCallback: function(type,msg) {
+                      console.log('错误信息：' + type+':'+msg);
+                  }
+              });
+              drawElement = new Cesium.DrawElement(viewer);
+          }else{
+              //如果没有添加完，那么继续等待
+              setTimeout(()=>{
+                  addCuttingTool();
+              },500)
+          }
+      }
+
+      //添加一个剖切面
+      function addCuttingPlane(){
+          //移除之前的切面
+          removeCuttingPlane();
+          //简单切面时，展示控制条
+          document.getElementById('planeSlideBarDiv').style.display = 'block';
+          cutTool.createModelCuttingPlane(new Cesium.Cartesian3(1.0, 0.0, 0.0), {
+              //裁剪面的初始距离
+              distance: 0 ,
+              //辅助面宽度缩放比例
+              scaleWidth: 2.5,
+              //辅助面高度缩放比例
+              scaleHeight: 2.5,
+              //裁剪方向，false：原方向，true：反向
+              unionClippingRegions: false,
+              //配置辅助面的颜色，以及透明度
+              color: new Cesium.Color(1, 1, 1, 0.2),
+              //是否显示辅助面
+              showCuttingPlane: true
+          });
+      }
+
+      //改变剖切面的颜色
+      function updateCuttingPlaneColor(){
+          if (cutTool) {
+              cutTool.changePlaneColor(new Cesium.Color(1.0, 0.0, 0.0, 1.0));
+          }
+      }
+
+      //改变剖切面的初始距离位置
+      function updateCuttingPlaneDistance(value){
+          if(cutTool){
+              cutTool.distance = Number(value);
+          }
+      }
+
+      //绘制一个切面
+      function drawOnePlane(){
+          layer.msg("左键选取两个点，右键结束");
+          //移除之前的切面
+          removeCuttingPlane();
+          drawElement.startDrawingPolyline({
+              callback: function (result) {
+                  let positions = result.positions;
+                  //取第一个点和第二个点
+                  let c1 = Cesium.Cartographic.fromCartesian(positions[0]);
+                  let c2 = Cesium.Cartographic.fromCartesian(positions[1]);
+                  let p1 = new Cesium.Cartesian3(Cesium.Math.toDegrees(c1.longitude), Cesium.Math.toDegrees(c1.latitude), c1.height);
+                  let p2 = new Cesium.Cartesian3(Cesium.Math.toDegrees(c2.longitude), Cesium.Math.toDegrees(c2.latitude), c2.height);
+                  cutTool.createModelCuttingPlaneFromLine(p1, p2, {
+                      //裁剪方向
+                      unionClippingRegions: false,
+                      //配置辅助面的颜色，以及透明度
+                      color: new Cesium.Color(1, 1, 1, 0.2),
+                      //是否显示辅助面
+                      showCuttingPlane: true,
+                      //辅助面宽度缩放比例
+                      scaleWidth: 2.5,
+                      //辅助面高度缩放比例
+                      scaleHeight: 2.5,
+                  });
+                  drawElement.stopDrawing();
+              }
+          });
+      }
+      //绘制多个切面
+      function drawManyPlane(){
+          layer.msg("左键选取两个或以上的点，右键结束");
+          //移除之前的切面
+          removeCuttingPlane();
+          drawElement.startDrawingPolyline({
+              callback : function(result) {
+                  let positions = result.positions;
+                  let lines = [];
+                  for (let i = 0; i < positions.length; i++) {
+                      let tempPoint = Cesium.Cartographic.fromCartesian(positions[i]);
+                      lines.push(new Cesium.Cartesian3(Cesium.Math.toDegrees(tempPoint.longitude), Cesium.Math.toDegrees(tempPoint.latitude), tempPoint.height));
+                  }
+
+                  cutTool.createModelCuttingPlaneFromPolyline (lines, {
+                      //裁剪方向，false为原方向，true为反方向
+                      unionClippingRegions: false
+                  });
+                  drawElement.stopDrawing();
+              }
+          });
+      }
+
+      //绘制裁剪区
+      function drawCuttingPolygon(){
+          layer.msg("左键选取两个或以上的点，右键结束");
+          //移除之前的切面
+          removeCuttingPlane();
+          drawElement.startDrawingPolygon({
+              callback: function (result) {
+                  let positions = result.positions;
+                  let pnts = [];
+                  for (let i = 0; i < positions.length; i++) {
+                      let position = positions[i];
+                      let c1 = Cesium.Cartographic.fromCartesian(position);
+                      let p1 = new Cesium.Cartesian3(Cesium.Math.toDegrees(c1.longitude), Cesium.Math.toDegrees(c1.latitude), c1.height);
+                      pnts.push(p1);
+                  }
+                  cutTool.createModelCuttingVolume(pnts,
+                      //裁剪深度
+                      -200,
+                      //裁剪高度
+                      500,
+                      {
+                          //裁剪方向，false：原方向，true反方向
+                          unionClippingRegions: false,
+                          //配置裁剪体的颜色，以及透明度
+                          color: new Cesium.Color(1, 1, 1, 0.2),
+                          //是否显示裁剪体
+                          showCuttingPlane: true
+                      }
+                  );
+                  drawElement.stopDrawing();
+              }
+          });
+      }
+
+      //清除剖切面
+      function removeCuttingPlane(){
+          if(cutTool){
+              cutTool.removeAll();
+          }
+          if(drawElement){
+              drawElement.stopDrawing();
+          }
+          document.getElementById('planeSlideBarDiv').style.display = 'none';
+      }
+
+      function addModels(){
+          viewer.scene.layers.removeAllLayers();
+          let url = 'http://192.168.82.89:8200/3DData/ModelCache/M3D//1.0/钻孔分层点_Sur_000_Ent/钻孔分层点_Sur_000_Ent.mcj';
+          viewer.scene.layers.appendM3DLayer(url, {
+              duration: 0,
+              maximumScreenSpaceError: 16,
+              loaded: function (layer) {
+                  layerList.push(layer);
+              }
+          });
+          let url2 = 'http://192.168.82.89:8200/3DData/ModelCache/M3D//1.0/钻孔_2_钻孔模型s/钻孔_2_钻孔模型s.mcj';
+          viewer.scene.layers.appendM3DLayer(url2, {
+              duration: 0,
+              maximumScreenSpaceError: 16,
+              loaded: function (layer) {
+                  layerList.push(layer);
+              }
+          });
+      }
+
+      function addSlideBar(){
+          //等值面透明度
+          layui.slider.render({
+              elem: '#planeDistance',
+              value: 0,
+              min: -4000,
+              max: 4000,
+              theme: 'rgba(24, 144, 255, 1)',
+              input: true,
+              change: function(value){
+                  updateCuttingPlaneDistance(value);
+              }
+          });
+      }
+
+  </script>
+  <style>
+    .layui-slider {
+      top: -10px;
+      width: 472px;
+      left: 98px;
+    }
+    .layui-slider-input {
+      top: -23px;
+    }
+  </style>
+</head>
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right" style="width: 704px;">
+  <div class="sample-main-panel">
+    <div class="slideBarDiv" id="planeSlideBarDiv">
+      切面位置：<div id="planeDistance" class="demo-slider"></div>
+    </div>
+  </div>
+  <div class="sample-button-panel">
+    <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="addCuttingPlane()">添加剖切面</button>
+    <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="updateCuttingPlaneColor()">修改剖切面颜色</button>
+    <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="drawOnePlane()">单线段绘制一个剖面</button>
+    <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="drawManyPlane()">多线段绘制多个剖面</button>
+    <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="drawCuttingPolygon()">绘制裁剪区</button>
+    <button type="button" class="layui-btn layui-btn-sm layui-btn-danger" onclick="removeCuttingPlane()">清除剖切面</button>
+  </div>
+</div>
+</body>
+</html>

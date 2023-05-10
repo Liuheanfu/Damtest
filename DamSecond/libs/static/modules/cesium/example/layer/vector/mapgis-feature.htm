@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>加载FeatureServer服务</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      "use strict";
+      //定义三维视图的主要类
+      let viewer, options;
+
+      //地图初始化函数
+      function init() {
+          //初始化三维球体
+          initViewer();
+          //加载天地图
+          addTDT();
+          //加载FeatureServer服务数据
+          addFeatureServer();
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer("mapgis-3d-viewer", {});
+      }
+
+      //加载天地图
+      function addTDT() {
+          // 蓝色背景
+          let blueImage = new Cesium.UrlTemplateImageryProvider({
+              url: "https://map.geoq.cn/arcgis/rest/services/ChinaOnlineStreetPurplishBlue/MapServer/tile/{z}/{y}/{x}",
+              tilingScheme: new Cesium.WebMercatorTilingScheme(),
+              maximumLevel: 18,
+          });
+          viewer.imageryLayers.addImageryProvider(blueImage);
+      }
+
+      //加载FeatureServer服务数据
+      function addFeatureServer() {
+          // 渲染规则
+          let renderer = {
+              //单值专题图类型
+              type: "unique-value",
+              //要素字段
+              field: "NAME",
+              //默认渲染符号
+              defaultSymbol: {
+                  //设置为3d面
+                  type: "polygon-3d",
+                  symbolLayers: {
+                      //设置为填充类型
+                      type: "fill",
+                      //填充材料
+                      material: {color: new Cesium.Color.fromCssColorString('#2578B4').withAlpha(0.6)},
+                      //外边线
+                      outline: {
+                          color: new Cesium.Color.fromCssColorString('#2578B4'),
+                          width: 2.0,
+                      },
+                  },
+              },
+              //自定义渲染符号
+              uniqueValueInfos: [
+                  // 当NAME字段值为‘襄阳市’时，该区域要素按如下symbolLayers中符号进行渲染
+                  {
+                      value: "襄阳市",
+                      symbol: {
+                          type: "polygon-3d",
+                          symbolLayers: {
+                              type: "fill",
+                              material: {color: new Cesium.Color.fromCssColorString('#2578B4').withAlpha(0.6)},
+                              outline: {
+                                  color: new Cesium.Color.fromCssColorString('#2578B4'),
+                                  width: 2.0,
+                              },
+                          },
+                      },
+                  },
+                  {
+                      value: "武汉市",
+                      symbol: {
+                          type: "polygon-3d",
+                          symbolLayers: {
+                              type: "fill",
+                              material: {color: new Cesium.Color.fromCssColorString('#78B3DE').withAlpha(0.6)},
+                              outline: {
+                                  color: new Cesium.Color.fromCssColorString('#78B3DE'),
+                                  width: 2.0,
+                              },
+                          },
+                      },
+                  },
+                  {
+                      value: "黄冈市",
+                      symbol: {
+                          type: "polygon-3d",
+                          symbolLayers: {
+                              type: "fill",
+                              material: {color: new Cesium.Color.fromCssColorString('#9FC5DA').withAlpha(0.6)},
+                              outline: {
+                                  color: new Cesium.Color.fromCssColorString('#9FC5DA'),
+                                  width: 2.0,
+                              },
+                          },
+                      }
+                  },
+                  {
+                      value: "黄石市",
+                      symbol: {
+                          type: "polygon-3d",
+                          symbolLayers: {
+                              type: "fill",
+                              material: {color: new Cesium.Color.fromCssColorString('#6A3D9B').withAlpha(0.6)},
+                              outline: {
+                                  color: new Cesium.Color.fromCssColorString('#6A3D9B'),
+                                  width: 2.0,
+                              },
+                          },
+                      }
+                  },
+                  {
+                      value: "宜昌市",
+                      symbol: {
+                          type: "polygon-3d",
+                          symbolLayers: {
+                              type: "fill",
+                              material: {color: new Cesium.Color.fromCssColorString('#8287F7').withAlpha(0.6)},
+                              outline: {
+                                  color: new Cesium.Color.fromCssColorString('#8287F7'),
+                                  width: 2.0,
+                              },
+                          },
+                      }
+                  },
+                  {
+                      value: "孝感市",
+                      symbol: {
+                          type: "polygon-3d",
+                          symbolLayers: {
+                              type: "fill",
+                              material: {color: new Cesium.Color.fromCssColorString('#82F7FE').withAlpha(0.6)},
+                              outline: {
+                                  color: new Cesium.Color.fromCssColorString('#82F7FE'),
+                                  width: 2.0,
+                              },
+                          },
+                      }
+                  },
+                  {
+                      value: "十堰市",
+                      symbol: {
+                          type: "polygon-3d",
+                          symbolLayers: {
+                              type: "fill",
+                              material: {color: new Cesium.Color.fromCssColorString('#B2DF8A').withAlpha(0.6)},
+                              outline: {
+                                  color: new Cesium.Color.fromCssColorString('#B2DF8A'),
+                                  width: 2.0,
+                              },
+                          },
+                      }
+                  },
+                  {
+                      value: "荆州市",
+                      symbol: {
+                          type: "polygon-3d",
+                          symbolLayers: {
+                              type: "fill",
+                              material: {color: new Cesium.Color.fromCssColorString('#4CA12E').withAlpha(0.6)},
+                              outline: {
+                                  color: new Cesium.Color.fromCssColorString('#4CA12E'),
+                                  width: 2.0,
+                              },
+                          },
+                      }
+                  },
+              ],
+          };
+          viewer.scene.layers.appendFeatureLayer(
+              "http://192.168.82.89:8089/igs/rest/services/Map/Hubei4326/FeatureServer/1", // 矢量图层的url
+              {
+                  //回调函数，返回加载的要素图层索引，用于获取对应的要素图层对象
+                  getDocLayerIndexes: function (indexs) {
+                      let layer = viewer.scene.layers.getFeatureLayer(indexs[0]);
+                      console.log(indexs, layer);
+                  },
+                  // 矢量图层过滤条件，详见文档
+                  filter: {
+                      where: "GDP2016>100", //要素过滤条件
+                  },
+                  autoReset: true, //是否自动跳转至图层范围
+                  //地图切片方式，经纬度或者web墨卡托
+                  tilingScheme: new Cesium.GeographicTilingScheme({
+                      rectangle: Cesium.Rectangle.fromDegrees(-180, -90, 180, 90),
+                      ellipsoid: Cesium.Ellipsoid.WGS84,
+                      numberOfLevelZeroTilesX: 2,
+                      numberOfLevelZeroTilesY: 1,
+                  }),
+                  tileWidth: 256, //瓦片宽度
+                  tileHeight: 256, //瓦片高度
+                  minimumLevel: 0, // 瓦片最小级别
+                  maximumLevel: 20, //瓦片最大级别
+                  loadAll: true, //加载全部要素
+                  renderer: renderer, //渲染规则
+              }
+          );
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+</body>
+</html>

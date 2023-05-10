@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta charset='utf-8'/>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>M3D（2.0）- 根据OID隐藏图元</title>
+  <!--引入Cesium库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/visual.css"/>
+    <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer, renderer_unique, layers = [];
+
+      //地图初始化函数
+      function init() {
+          //初始化三维球体
+          initViewer();
+          //添加M3D专题图
+          addM3DThemeLayer();
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+      }
+
+      //设置专题图参数
+      function setRender() {
+          //单值专题图参数
+          renderer_unique = {
+              //专题图字段
+              field: "OID",
+              //专题图类型-单值
+              type: "unique-value",
+              //专题图着色参数
+              uniqueValueInfos: []
+          }
+          //初始化专题图着色参数，设置oid从1到20000的颜色为半透明蓝色
+          for (let i = 1; i <= 60; i++) {
+              let check = document.getElementById("check_" + i);
+              renderer_unique.uniqueValueInfos.push({
+                  //单值过滤条件
+                  value: i,
+                  //渲染符号
+                  symbol: {
+                      //渲染类型为M3D
+                      type: 'mesh-3d',
+                      //覆盖物图层
+                      symbolLayers: [{
+                          //图层类型-颜色填充
+                          type: "fill",
+                          //图层材质
+                          material: {
+                              //是否显示隐藏图元
+                              show: check.checked
+                          }
+                      }]
+                  }
+              });
+          }
+          //更新专题图参数
+          for (let i = 0; i < layers.length; i++) {
+              layers[i].renderer = renderer_unique;
+          }
+      }
+
+      //添加M3D专题图
+      function addM3DThemeLayer() {
+          let url = 'http://192.168.82.89:8089/igs/rest/services/Scene/高级住所模型/SceneServer';
+          //添加M3D白膜数据
+          viewer.scene.layers.appendSceneLayer(url, {
+              //设置render参数，渲染专题图
+              renderer: {
+                  //专题图字段
+                  field: "OID",
+                  //专题图类型-单值
+                  type: "unique-value",
+                  //专题图着色参数
+                  uniqueValueInfos: []
+              },
+              loaded: function (M3D) {
+                  layers.push(M3D);
+              }
+          });
+      }
+
+      function hideByOid() {
+          let renderer_unique = {
+              //专题图字段
+              field: "OID",
+              //专题图类型-单值
+              type: "unique-value",
+              //专题图着色参数
+              uniqueValueInfos: []
+          }
+          for (let i = 1; i <= 400; i++) {
+              renderer_unique.uniqueValueInfos.push({
+                  //单值过滤条件
+                  value: i,
+                  //渲染符号
+                  symbol: {
+                      //渲染类型为M3D
+                      type: 'mesh-3d',
+                      //覆盖物图层
+                      symbolLayers: [{
+                          //图层类型-颜色填充
+                          type: "fill",
+                          //图层材质
+                          material: {
+                              //是否显示隐藏图元
+                              show: false
+                          }
+                      }]
+                  }
+              });
+          }
+          //更新专题图参数
+          for (let i = 0; i < layers.length; i++) {
+              layers[i].renderer = renderer_unique;
+          }
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right" style="height: 65px;width: 150px;">
+    <button type="button" onclick="hideByOid()" class="layui-btn layui-btn-primary layui-btn-fluid">根据OID隐藏图元</button>
+</div>
+</body>
+
+</html>

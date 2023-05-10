@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>截图工具</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/tool.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer = null;
+
+      //地图初始化函数
+      function init() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          //添加天地图影像
+          addTdtImage();
+          //三维试图类构造完毕，添加一个模型
+          addModel();
+      }
+
+      function screenshot() {
+          viewer.render();
+          let res = Cesium.ReImg.fromCanvas(viewer.canvas);
+          res.downloadPng();
+      }
+
+      function addTdtImage() {
+          let url = 'http://t0.tianditu.com/DataServer';
+          let options = {
+              // token: '', //访问天地图服务的token
+              tilingScheme: new Cesium.WebMercatorTilingScheme({
+                  numberOfLevelZeroTilesX: 2,
+                  numberOfLevelZeroTilesY: 2
+              })
+          };
+          //添加影像图层
+          viewer.scene.layers.appendImageryLayer(url, options);
+      }
+
+      function addModel() {
+          let url = 'http://192.168.82.89:8200/3DData/ModelCache/M3D//1.0/ZondyFaceModels/ZondyFaceModels.mcj';
+          viewer.scene.layers.appendM3DLayer(url, {
+              duration: 1
+          });
+      }
+
+  </script>
+</head>
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right" style="width: 103px">
+  <div class="sample-button-panel">
+    <button id="pause" type="button" class="layui-btn" onclick="screenshot()">截屏</button>
+  </div>
+</div>
+</body>
+</html>

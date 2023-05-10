@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta charset='utf-8'/>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>正方形</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/graphic.css"/>
+  <script>
+      'use strict';
+      //取得jquery对象
+      let $ = layui.$;
+      //颜色管理器对象
+      let colorpicker = layui.colorpicker;
+      //定义三维视图的主要类
+      let viewer, options, graphicsLayer, square;
+
+      //地图初始化函数
+      function init() {
+          //初始化球体
+          initViewer();
+          //初始化标绘图层
+          addGraphicLayer();
+          //图片材质正方形
+          addImageSquare();
+          //纯色正方形
+          addColorSquare();
+          //正方形文字
+          addTextSquare();
+          //正方体
+          addSquareVolume();
+          //文字闪烁
+          addFlashText();
+          //背景渐变
+          addFadeSquare();
+          //加载天地图底图
+          addTDT();
+          //视点跳转
+          flyTo();
+          //初始化示例UI
+          initUI();
+      }
+
+      //初始化球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          //显示鼠标位置
+          viewer.showPosition();
+      }
+
+      //添加标绘图层
+      function addGraphicLayer() {
+          graphicsLayer = new Cesium.GraphicsLayer(viewer, {
+              clickGraphic: function (graphic) {
+                  square = graphic;
+                  //更新样式面板
+                  $('#square-height').val(square.style.height);
+                  colorpicker.render({
+                      elem: '#square-color'
+                      , color: square.style.color.toCssHexString()
+                      , done: function (color) {
+                          $('#square-color-input').val(color);
+                          square.style.color = Cesium.Color.fromCssColorString(color);
+                      }
+                  });
+                  //这个时候展开编辑面板
+                  $('#editPanel').show();
+              }
+          });
+      }
+
+      //图片材质正方形
+      function addImageSquare() {
+          let squareGraphic = new Cesium.Graphic({
+              //类型
+              type: 'square',
+              //几何点坐标
+              positions: [new Cesium.Cartesian3(-2250131.3103201385, 5050436.7229545135, 3169060.6153778373), new Cesium.Cartesian3(-2253857.227111552, 5050643.272345475, 3166102.274668393)],
+              //样式
+              style: {
+                  // 材图片材质
+                  material: Cesium.Material.fromType(Cesium.Material.ImageType, {
+                      //图片url
+                      image: 'http://192.168.82.89:8200/NoneSpatialData/image/earth.jpg',
+                      // x、y轴重复
+                      repeat: new Cesium.Cartesian2(1.0, 1.0)
+                  }),
+                  // 离地高度
+                  height: 100
+              }
+          })
+          //将标绘点添加入标绘图层
+          graphicsLayer.addGraphic(squareGraphic);
+      }
+
+      //纯色正方形
+      function addColorSquare() {
+          let squareGraphic2 = new Cesium.Graphic({
+              //类型
+              type: 'square',
+              //几何点数组
+              positions: [new Cesium.Cartesian3(-2254079.226838635, 5048756.293670064, 3168933.429709919), new Cesium.Cartesian3(-2257757.265366248, 5048921.9629604705, 3166069.1485828133)],
+              //样式
+              style: {
+                  // 颜色
+                  color: Cesium.Color.SALMON,
+                  // 离地高度
+                  height: 100
+              }
+          })
+          //将标绘点添加入标绘图层
+          graphicsLayer.addGraphic(squareGraphic2);
+      }
+
+      //正方形文字
+      function addTextSquare() {
+          let squareGraphic3 = new Cesium.Graphic({
+              //类型
+              type: 'square',
+              //几何点坐标
+              positions: [new Cesium.Cartesian3(-2258062.637084434, 5047005.498696789, 3168886.7369640563), new Cesium.Cartesian3(-2261700.147989922, 5047186.639901234, 3166022.155737138)],
+              //样式
+              style: {
+                  //离地高度
+                  height: 100,
+                  //材质类型
+                  materialType: 'text',
+                  //材质
+                  material: {
+                      //文字
+                      text: '贴地文字',
+                      //文字颜色
+                      fillColor: Cesium.Color.DEEPPINK,
+                      //背景颜色
+                      backgroundColor: Cesium.Color.WHITE.withAlpha(0),
+                      //字体
+                      font: 'bolder 80px MicroSoft YaHei'
+                  }
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(squareGraphic3);
+      }
+
+      //正方体
+      function addSquareVolume() {
+          let squareGraphic4 = new Cesium.Graphic({
+              //类型
+              type: 'square',
+              //几何点数组
+              positions: [new Cesium.Cartesian3(-2251172.816461849, 5052634.917592609, 3164841.938442803), new Cesium.Cartesian3(-2254726.6446384955, 5052864.265399153, 3161964.004876993)],
+              // 样式
+              style: {
+                  // 颜色
+                  color: Cesium.Color.SPRINGGREEN,
+                  // 离地高度
+                  height: 100,
+                  // 拉伸高度
+                  extrudedHeight: 600
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(squareGraphic4);
+      }
+
+      //闪烁文字
+      function addFlashText() {
+          let squareGraphic5 = new Cesium.Graphic({
+              // 类型
+              type: 'square',
+              // 几何点数组
+              positions: [new Cesium.Cartesian3(-2255143.3662932036, 5050956.910542838, 3164695.2764768903), new Cesium.Cartesian3(-2258846.8331088647, 5051120.2592713535, 3161811.441052107)],
+              // 样式
+              style: {
+                  // 离地高度
+                  height: 100,
+                  // 材质类型
+                  materialType: 'text',
+                  // 文字材质
+                  material: {
+                      // 文字内容
+                      text: '闪烁文字',
+                      // 颜色
+                      fillColor: Cesium.Color.SNOW,
+                      // 背景
+                      backgroundColor: Cesium.Color.SLATEGREY,
+                      // 字体
+                      font: 'bolder 80px MicroSoft YaHei',
+                      // 启用闪烁
+                      breathingLight: true,
+                      // 闪烁速度
+                      duration: 1000
+                  }
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(squareGraphic5);
+      }
+
+      //背景渐变
+      function addFadeSquare() {
+          let squareGraphic6 = new Cesium.Graphic({
+              //类型
+              type: 'square',
+              //几何点坐标
+              positions: [new Cesium.Cartesian3(-2259081.943054401, 5049205.786082173, 3164680.685006), new Cesium.Cartesian3(-2262974.923155326, 5049343.049815404, 3161698.997038885)],
+              // 样式
+              style: {
+                  // 离地高度
+                  height: 100,
+                  // 材质类型
+                  materialType: 'text',
+                  // 材质
+                  material: {
+                      // 文字内容
+                      text: '背景渐变',
+                      // 文字颜色
+                      fillColor: Cesium.Color.MOCCASIN,
+                      // 背景颜色
+                      backgroundColor: Cesium.Color.OLDLACE,
+                      // 字体
+                      font: 'bolder 80px MicroSoft YaHei',
+                      // 启用渐变
+                      isGradient: true
+                  }
+              }
+          })
+          //将标绘添加入标绘图层
+          graphicsLayer.addGraphic(squareGraphic6);
+      }
+
+      //添加天地图
+      function addTDT() {
+          let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      //初始化示例UI
+      function initUI() {
+          layui.use('colorpicker', function () {
+              //离地高度
+              $("#square-height").bind("input propertychange", function () {
+                  square.style.height = Number($('#square-height').val());
+              })
+
+              //填充颜色
+              colorpicker.render({
+                  elem: '#square-color'
+                  , color: '#9dfafe'
+                  , done: function (color) {
+                      $('#square-color-input').val(color);
+                      square.style.color = Cesium.Color.fromCssColorString(color);
+                  }
+              });
+          });
+      }
+
+      //视点跳转
+      function flyTo() {
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(114.0791, 29.9492, 29000),
+              duration: 2
+          });
+      }
+
+      function startDrawing() {
+          graphicsLayer.startDrawing({
+              type: 'square',
+              style: {
+                  color: Cesium.Color.fromCssColorString($('#square-color-input').val()),
+                  height: Number($('#square-height').val())
+              }
+          });
+      }
+
+      function stopDrawing() {
+          graphicsLayer.stopDrawing();
+      }
+
+      function deleteSquare() {
+          square.remove();
+          $('#editPanel').hide();
+      }
+
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+<div class="layui-panel layui-panel-right" style="text-align: center;width: 140px;padding: 10px;">
+  <button onclick="startDrawing()" style="width:auto;margin:0 auto !important;" type="button" class="layui-btn layui-btn-normal graphic-button-margin">添加正方形</button>
+</div>
+<div class="layui-panel layui-panel-right" id="editPanel" style="display: none;top: 70px;">
+  <form class="layui-form" action="">
+    <div class="sample-main-panel">
+      <div class="layui-form-item">
+        <label class="layui-form-label">填充颜色</label>
+        <div class="layui-input-inline" style="width: 145px;margin-left:10px;">
+          <input disabled type="text" value="#00ffff" placeholder="填充颜色" class="layui-input" id="square-color-input">
+        </div>
+        <div class="layui-inline">
+          <div id="square-color"></div>
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <label class="layui-form-label">离地高度</label>
+        <div class="layui-input-block">
+          <input id="square-height" value="100" type="text" name="title" lay-verify="title" autocomplete="off"
+                 class="layui-input">
+        </div>
+      </div>
+    </div>
+    <div class="sample-button-panel">
+      <button onclick="$('#editPanel').hide()" style="float: right;width:auto;margin-right: 0 !important;" type="button" class="layui-btn layui-btn-normal graphic-button-margin">关闭面板</button>
+      <span onclick="deleteSquare()" style="cursor:pointer;float: right;line-height: 32px;margin-right: 15px;">删除正方形</span>
+    </div>
+  </form>
+</div>
+</body>
+
+</html>

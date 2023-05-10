@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>喷泉特效</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer = null;
+      let stableParticle = null
+
+
+      //地图初始化函数
+      function init() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          //添加中地大楼模型
+          viewer.scene.layers.appendM3DLayer("http://192.168.82.89:8200/3DData/ModelCache/M3D//1.0/ZondyFaceModels/ZondyFaceModels.mcj", {});
+          //添加天地图底图
+          addTdtImage();
+      }
+
+      //添加天地图底图
+      function addTdtImage() {
+          let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+
+      }
+
+      //添加
+      function addFountain() {
+          removeFountain();
+          stableParticle = new Cesium.StableParticle(viewer, 'http://192.168.82.89:8200/NoneSpatialData/image/visual/effects-fountain.png', [114.40230, 30.46654, 5], {
+              startColor: new Cesium.Color(1, 1, 1, 1), // 开始的颜色
+              endColor: new Cesium.Color(1, 1, 1, 1), // 结束的颜色
+              emissionRate: 15, // 排放率
+              particleSize: 4, // 粒子大小
+              minimumParticleLife: 8.1, // 最小粒子周期
+              maximumParticleLife: 2.1, // 最大粒子周期
+              minimumSpeed: 0, // 最小速率
+              maximumSpeed: 25, // 最大速率
+              startScale: 0, // 起始尺寸
+              endScale: 4, // 结束尺寸
+              gravity: -20.0 // 粒子重力
+          });
+          // 需要调整视角，以获得更好的显示效果
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(114.4032, 30.4658, 50.0),
+              orientation: {
+                  heading: Cesium.Math.toRadians(-50), // 水平偏角，默认正北 0
+                  pitch: Cesium.Math.toRadians(-10), // 俯视角，默认-90，垂直向下
+                  roll: 0, // 旋转角
+              },
+          });
+          stableParticle.start();
+      }
+
+      //移除
+      function removeFountain() {
+          if (stableParticle) {
+              stableParticle.remove();
+          }
+      }
+
+  </script>
+</head>
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+<div class="layui-panel layui-panel-right" style="width: auto;">
+  <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="addFountain()">添加喷泉</button>
+  <button type="button" class="layui-btn layui-btn-sm layui-btn-danger" onclick="removeFountain()">移除喷泉</button>
+</div>
+</body>
+</html>

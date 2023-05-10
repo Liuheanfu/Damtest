@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>加载 GeoJson 数据</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      "use strict";
+      //定义三维视图的主要类
+      let viewer, options;
+
+      //地图初始化函数
+      function init() {
+          //初始化三维球体
+          initViewer();
+          //加载天地图
+          addTDT();
+          //视角跳转
+          flyTo();
+          // 添加GeoJSON数据;
+          addGeoJSONLayer();
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer("mapgis-3d-viewer", {});
+      }
+
+      //加载天地图
+      function addTDT() {
+          // 蓝色背景
+          let blueImage = new Cesium.UrlTemplateImageryProvider({
+              url: "https://map.geoq.cn/arcgis/rest/services/ChinaOnlineStreetPurplishBlue/MapServer/tile/{z}/{y}/{x}",
+              tilingScheme: new Cesium.WebMercatorTilingScheme(),
+              maximumLevel: 18,
+          });
+          viewer.imageryLayers.addImageryProvider(blueImage);
+
+      }
+
+      //视角跳转
+      function flyTo() {
+          viewer.camera.setView({
+              destination: Cesium.Cartesian3.fromDegrees(
+                  114.18944441797595,
+                  30.5690284961602,
+                  200000
+              ),
+          });
+      }
+
+      // 添加GeoJSON数据;
+      function addGeoJSONLayer() {
+          viewer.dataSources.add(
+              // 站点
+              Cesium.GeoJsonDataSource.load(
+                  "http://192.168.82.89:8200/Vector/json/metroStation.json", //GeoJSON 、TopoJSON数据url
+                  {
+                      markerSize: 30, //点大小
+                      markerSymbol: "rail", //cesium内置地图图钉符号id
+                      markerColor: Cesium.Color.ALICEBLUE, //点颜色
+                      clampToGround: false, //几何图形是否贴地
+                  }
+              )
+          );
+          // 道路线
+          addLine();
+          viewer.dataSources.add(
+              // 武汉市区数据
+              Cesium.GeoJsonDataSource.load(
+                  "http://192.168.82.89:8200/Vector/json/populationSizeGeoJson_2017.json", //GeoJSON 、TopoJSON数据url
+                  {
+                      outline: true, // 多边形是否显示外边框
+                      stroke: Cesium.Color.YELLOW, //边框颜色
+                      strokeWidth: 3, //外边框宽度
+                      fill: Cesium.Color.YELLOW.withAlpha(0), //多边形填充颜色
+                      clampToGround: false, //几何图形是否贴地
+                  }
+              )
+          );
+
+      }
+      // 道路线
+      function addLine() {
+          // 渲染规则
+          let renderer = {
+              //单值专题图类型
+              type: "unique-value",
+              //要素字段
+              field: "ln",
+              //默认渲染符号
+              defaultSymbol: {
+                  //设置为3d面
+                  type: "line-3d",
+                  symbolLayers: {
+                      //设置为填充类型
+                      type: "line",
+                      //填充材料
+                      material: {color: new Cesium.Color(1.0, 1.0, 0.0, 1.0)},
+                      size: 20.0,
+                  },
+              },
+              //自定义渲染符号
+              uniqueValueInfos: [
+                  // 当NAME字段值为‘襄阳市’时，该区域要素按如下symbolLayers中符号进行渲染
+                  {
+                      value: "1号线",
+                      symbol: {
+                          type: "line-3d",
+                          symbolLayers: {
+                              type: "line",
+                              material: {color: new Cesium.Color.fromCssColorString('#3786C8')},
+                              size: 20.0,
+                          },
+                      },
+                      label: ''
+                  },
+                  {
+                      value: "2号线",
+                      symbol: {
+                          type: "line-3d",
+                          symbolLayers: {
+                              type: "line",
+                              material: {color: new Cesium.Color.fromCssColorString('#EB7CAE')},
+                              size: 20.0,
+                          },
+                      },
+                  },
+                  {
+                      value: "3号线",
+                      symbol: {
+                          type: "line-3d",
+                          symbolLayers: {
+                              type: "line",
+                              material: {color: new Cesium.Color.fromCssColorString('#DEB965')},
+                              size: 20.0,
+                          },
+                      }
+                  },
+                  {
+                      value: "4号线",
+                      symbol: {
+                          type: "line-3d",
+                          symbolLayers: {
+                              type: "line",
+                              material: {color: new Cesium.Color.fromCssColorString('#8ECB1F')},
+                              size: 20.0,
+                          },
+                      }
+                  },
+                  {
+                      value: "5号线",
+                      symbol: {
+                          type: "line-3d",
+                          symbolLayers: {
+                              type: "line",
+                              material: {color: new Cesium.Color.fromCssColorString('#DE5E53')},
+                              size: 20.0,
+                          },
+                      }
+                  },
+                  {
+                      value: "6号线",
+                      symbol: {
+                          type: "line-3d",
+                          symbolLayers: {
+                              type: "line",
+                              material: {color: new Cesium.Color.fromCssColorString('#018634')},
+                              size: 20.0,
+                          },
+                      }
+                  },
+                  {
+                      value: "7号线",
+                      symbol: {
+                          type: "line-3d",
+                          symbolLayers: {
+                              type: "line",
+                              material: {color: new Cesium.Color.fromCssColorString('#EF7801')},
+                              size: 20.0,
+                          },
+                      }
+                  },
+                  {
+                      value: "8号线",
+                      symbol: {
+                          type: "line-3d",
+                          symbolLayers: {
+                              type: "line",
+                              material: {color: new Cesium.Color.fromCssColorString('#99ADAE')},
+                              size: 20.0,
+                          },
+                      }
+                  },
+                  {
+                      value: "11号线",
+                      symbol: {
+                          type: "line-3d",
+                          symbolLayers: {
+                              type: "line",
+                              material: {color: new Cesium.Color.fromCssColorString('#F3D301')},
+                              size: 20.0,
+                          },
+                      }
+                  },
+                  {
+                      value: "16号线",
+                      symbol: {
+                          type: "line-3d",
+                          symbolLayers: {
+                              type: "line",
+                              material: {color: new Cesium.Color.fromCssColorString('#D9577D')},
+                              size: 20.0,
+                          },
+                      }
+                  },
+                  {
+                      value: "21号线",
+                      symbol: {
+                          type: "line-3d",
+                          symbolLayers: {
+                              type: "line",
+                              material: {color: new Cesium.Color.fromCssColorString('#B60081')},
+                              size: 20.0,
+                          }
+                      }
+                  }
+              ],
+          };
+
+          let options = {
+              autoReset: true,
+              loadAll: true,
+              tileFeaturesCount: 400,
+              renderer: renderer
+          };
+          let url = 'http://192.168.82.89:8200/Vector/json/metro.json';
+          options.url = url;
+          viewer.scene.layers.appendGeojsonLayer(url, options);
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+</body>
+</html>

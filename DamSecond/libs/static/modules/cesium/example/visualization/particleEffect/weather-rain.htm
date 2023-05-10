@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>雨天气</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/visual.css"/>
+  <script>
+      'use strict';
+      //取得jquery对象
+      let $ = layui.$;
+      //滑动条管理器对象
+      let slider = layui.slider;
+      //定义三维视图的主要类
+      let viewer = null;
+      //天气类
+      let weather = null;
+      //添加雨的参数
+      let optionsRain = {
+          alpha: 0.3, //透明度[0,1]
+          angle: 0, //倾斜角度[-30,30],sin(angle)
+          speed: 15, //雨丝速度[0,∞],推荐使用[0-20]
+          rainLength: 0.0, //附加长度，雨丝本身具有一定长度
+          factor: 0.1 //混合度[0,1]
+      };
+
+      //地图初始化函数
+      function init() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          //添加中地大楼模型
+          viewer.scene.layers.appendM3DLayer("http://192.168.82.89:8200/3DData/ModelCache/M3D//1.0/ZondyFaceModels/ZondyFaceModels.mcj", {});
+          //添加天地图底图
+          addTdtImage();
+          //创建天气类
+          weather = new Cesium.WeatherEffect(viewer);
+          //初始化示例UI
+          initUI();
+      }
+
+      //添加天地图底图
+      function addTdtImage() {
+          let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      //初始化示例UI
+      function initUI() {
+          // 透明度
+          slider.render({
+              elem: "#alpha",
+              value: optionsRain.alpha * 100,
+              min: 1.0,
+              max: 100.0,
+              step: 1,
+              theme: 'rgb(102 147 251)',
+              input: true,
+              setTips: function (value) {
+                  return `${value}%`;
+              },
+              change: function (value) {
+                  $('#alpha-input').val(value);
+                  if (Cesium.defined(weather)) {
+                      optionsRain.alpha = value * 0.01;
+                      rain();
+                  }
+
+              }
+          });
+          // 倾斜角度
+          slider.render({
+              elem: "#angle",
+              value: optionsRain.angle,
+              min: -30.0,
+              max: 30.0,
+              step: 1,
+              theme: 'rgb(102 147 251)',
+              input: true,
+              change: function (value) {
+                  $('#angle-input').val(value);
+                  if (Cesium.defined(weather)) {
+                      optionsRain.angle = value;
+                      rain();
+                  }
+
+              }
+          });
+          // 雨丝速度
+          slider.render({
+              elem: "#speed",
+              value: optionsRain.speed,
+              min: 1.0,
+              max: 20.0,
+              step: 1,
+              theme: 'rgb(102 147 251)',
+              input: true,
+              change: function (value) {
+                  $('#speed-input').val(value);
+                  if (Cesium.defined(weather)) {
+                      optionsRain.speed = value;
+                      rain();
+                  }
+
+              }
+          });
+          //雨丝附加长度
+          slider.render({
+              elem: "#rainLength",
+              value: optionsRain.rainLength,
+              min: 0.0,
+              max: 10.0,
+              step: 1,
+              theme: 'rgb(102 147 251)',
+              input: true,
+              change: function (value) {
+                  $('#rainLength-input').val(value);
+                  if (Cesium.defined(weather)) {
+                      optionsRain.rainLength = value;
+                      rain();
+                  }
+              }
+          });
+          //场景混合度
+          slider.render({
+              elem: "#factor",
+              value: optionsRain.factor * 100,
+              min: 0.0,
+              max: 100.0,
+              step: 1,
+              theme: 'rgb(102 147 251)',
+              input: true,
+              setTips: function (value) {
+                  return `${value}%`;
+              },
+              change: function (value) {
+                  $('#factor-input').val(value);
+                  if (Cesium.defined(weather)) {
+                      optionsRain.factor = value * 0.01;
+                      rain();
+                  }
+              }
+          });
+      }
+
+      //雨
+      function rain() {
+          //移除雨
+          weather.removeRain();
+          weather.addRain(optionsRain);
+      }
+
+      //移除雨
+      function removeRain() {
+          weather.removeRain();
+      }
+
+
+  </script>
+</head>
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+<div class="layui-panel layui-panel-right">
+  <form class="layui-form" action="">
+    <div class="sample-main-panel">
+      <div class="layui-form-item">
+        <div class="slideBarDiv">
+          透明度
+          <div id="alpha" class="demo-slider"></div>
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <div class="slideBarDiv">
+          倾斜角度
+          <div id="angle" class="demo-slider"></div>
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <div class="slideBarDiv">
+          雨丝速度
+          <div id="speed" class="demo-slider"></div>
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <div class="slideBarDiv">
+          雨丝附加长度
+          <div id="rainLength" class="demo-slider"></div>
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <div class="slideBarDiv">
+          场景混合度
+          <div id="factor" class="demo-slider"></div>
+        </div>
+      </div>
+    </div>
+    <div class="sample-button-panel">
+      <button onclick="rain()" type="button" class="layui-btn layui-btn-normal">添加雨</button>
+      <button onclick="removeRain()" type="button" class="layui-btn layui-btn-normal">移除雨</button>
+    </div>
+  </form>
+</div>
+<style>
+  .sample-main-panel {
+    height: auto;
+  }
+
+  .layui-slider {
+    top: -20px;
+    width: 115px;
+    left: 94px;
+  }
+
+  .layui-slider-input {
+    top: -34px;
+  }
+</style>
+</body>
+</html>

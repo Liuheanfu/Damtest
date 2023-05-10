@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+  <title>模型(gltf)编辑工具</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css" />
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css" />
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/tool.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer = null;
+      //模型
+      let model = null;
+      //模型编辑工具
+      let transformEditor = null;
+
+      //地图初始化函数
+      function init() {
+          //初始化三维球体
+          initViewer();
+          //添加天地图影像
+          addTdtImage();
+          //三维试图类构造完毕，添加一个模型
+          addModel();
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+      }
+
+      //移动
+      function move(){
+          transformEditor = createTransformEditor();
+          //先关闭激活
+          let viewModel = transformEditor.viewModel;
+          viewModel.deactivate();
+          viewModel.setModeTranslation();
+          viewModel.activate();
+      }
+
+      //旋转
+      function rotate(){
+          transformEditor = createTransformEditor();
+          //先关闭激活
+          let viewModel = transformEditor.viewModel;
+          viewModel.deactivate();
+          viewModel.setModeRotation();
+          viewModel.activate();
+      }
+
+      //缩放
+      function zoom(){
+          transformEditor = createTransformEditor();
+          //先关闭激活
+          let viewModel = transformEditor.viewModel;
+          viewModel.deactivate();
+          viewModel.setModeScale();
+          viewModel.activate();
+      }
+
+      //鼠标右键，取消编辑工具的激活状态
+      function deactivate(){
+          if(transformEditor){
+              if(transformEditor.viewModel){
+                  transformEditor.viewModel.deactivate();
+              }
+          }
+      }
+
+      //模型编辑工具
+      function createTransformEditor(){
+          if(transformEditor === null){
+              //创建编辑器
+              transformEditor = new Cesium.ModelEditor({
+                  container: viewer.container,
+                  scene: viewer.scene,
+                  transform: model.modelMatrix,
+                  boundingSphere: model.boundingSphere,
+                  // originOffset: new Cesium.Cartesian3(5,5,5)
+              });
+          }
+          return transformEditor;
+      }
+
+      function addTdtImage(){
+          let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      function addModel(){
+          let glbUrl = 'http://192.168.82.89:8200/3DData/Model/glb/CesiumMilkTruck.glb';
+          let position = Cesium.Cartesian3.fromDegrees(118.0385, 42.6374, 0);
+          let modelMatrix = Cesium.Transforms.headingPitchRollToFixedFrame(position, new Cesium.HeadingPitchRoll());
+          let modelObj = {
+              id: 'modelPrimitive',
+              url: glbUrl,
+              modelMatrix: modelMatrix,
+              scale: 100.0
+          };
+          model = viewer.scene.primitives.add(Cesium.Model.fromGltf(modelObj));
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(118.0385, 42.6374, 5000),
+              duration: 1
+          });
+      }
+
+  </script>
+</head>
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right" style="width: 324px;">
+  <div class="sample-button-panel" style="margin-top: 0;">
+    <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="move()">移动</button>
+    <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="rotate()">旋转</button>
+    <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="zoom()">缩放</button>
+    <button type="button" class="layui-btn layui-btn-sm layui-btn-danger" onclick="deactivate()">取消工具激活状态</button>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>OGC-WFS</title>
+  <!--引入第三方的jquery脚本库-->
+  <script include="jquery" src="./static/libs/include-lib-local.js"></script>
+  <script src="./static/libs/include-mapboxgl-local.js"></script>
+  <!--引入当前页面样式表-->
+  <link href="./static/modules/mapboxgl/example/style.css" rel="stylesheet" type="text/css" />
+  <style type="text/css">
+    #map {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 100vh;
+    }
+  </style>
+  <script>
+    //使用严格模式
+    "use strict";
+    var map, popup;
+    var { protocol, ip, port } = window.webclient;
+
+    /**
+    * 地图初始化
+    */
+    function init() {
+     //地图容器
+     map = new mapboxgl.Map({
+                container: 'map',
+                crs: 'EPSG:4326',
+                minZoom: 3,
+                zoom: 8,
+                center: [116.37, 39.95]
+            });
+
+            //瓦片地图
+            new mapboxgl.Zondy.Map.MapTileLayer('北京市Tile', {
+                ip: `${ip}`,
+                port: `${port}`,
+                zoomOffset: -1
+            }).addToMap(map);
+
+            var navigationControl = new mapboxgl.NavigationControl();
+            var scaleControl = new mapboxgl.ScaleControl();
+      popup = new mapboxgl.Popup({ closeOnClick: false });
+      popup.on("close", function () {
+
+      });
+      //注册地图加载事件
+      map.on("load", function () {
+        var baseurl = `${protocol}://${ip}:${port}/igs/rest/ogc/doc/北京市/WFSServer?REQUEST=GetFeature&version=1.1.0&service=wfs&typename=BeijingJWWMS:t0&maxFeatures=10`;
+        $.ajax({
+          url: baseurl,
+          type: "get",
+          dataType: "xml",
+          contentType: "application/x-www-form-urlencoded",
+          success: loadGeoJson,
+          error: function (xml) {
+            alert("请求失败");
+          }
+        });
+      });
+      //注册鼠标移动事件
+      map.on('mousemove', function (e) {
+        document.getElementById('mouse-position').innerHTML = "经度：" + e.lngLat.lng.toFixed(2) + "，纬度：" + e.lngLat.lat.toFixed(2);
+      });
+
+      function loadGeoJson(xml) {
+        if (!!xml) {
+          var beijing = xml.children[0].children[0].children[0].children;
+          var html = "<table>";
+          for (var i = 1; i < 7; i++) {
+            const element = beijing[i];
+            html += "<tr><td><b>" + beijing[i].localName + "</b></td><td>" + beijing[i].textContent + "</td></tr>"
+          }
+          html += "</table>";
+          popup.setLngLat([116.39, 39.90]).setHTML(html).addTo(map);
+        } else {
+          alert("没有查询到数据");
+        }
+      }
+    }
+  </script>
+</head>
+
+<body onload="init()">
+  <div id="map">
+    <div id="mouse-position">
+    </div>
+  </div>
+</body>
+
+</html>

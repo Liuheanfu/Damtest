@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+  <title>阴影分析</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css" />
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css" />
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/analyse.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer = null;
+      //Cesium的鼠标事件
+      let handler = null;
+      //绘制多边形的工具
+      let drawElement = null;
+      //阴影分析
+      let shadowAnalysis = null;
+      //地图初始化函数
+      function init() {
+          //初始化三维球体
+          initViewer();
+          //三维试图类构造完毕，添加一个模型
+          addModel();
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+      }
+
+      //绘制一个区面，主要是为了方便得到一个polygon的点集
+      //从而利用shadowAnalysis的calcPointsArrayInShadowTime接口，得到阴影分析结果
+      function addDrawElement(){
+          if(drawElement === null){
+              drawElement = new Cesium.DrawElement(viewer);
+          }
+          drawElement.startDrawingPolygon({
+              callback: function (result) {
+                  let points = result.positions; //绘制面的点集
+                  let startTime = new Date('2021/7/01 10:00:00'); //阴影绘制的开始时间
+                  let endTime = new Date('2021/7/01 14:00:00'); //阴影绘制的结束时间
+                  //看看有没有阴影分析的对象，如果没有构造一个
+                  //先移除阴影分析，再添加一个
+                  removeShadowAnalysis();
+                  shadowAnalysis = addShadowAnalysis();
+                  shadowAnalysis.calcPointsArrayInShadowTime(points, 1, 21, startTime, endTime);
+                  drawElement.stopDrawing();
+                  //给加一个鼠标拾取，方便拿到结果之后拾取分析点
+                  addMouseClickEvent();
+              }
+          })
+      }
+
+      //创建一个阴影分析的对象
+      function addShadowAnalysis(){
+          //阴影分析的结果以小点显示
+          return new Cesium.ShadowAnalysis(viewer, {
+              percentCallback: shadowAnalysisPercentCallback, //分析过程完成度百分比回调
+              shadowRatioCallBack: shadowRatioCallback, //计算阴影率结果的回调
+              xPaneNum: 11, //X轴的插值点个数
+              yPaneNum: 11, //Y轴的插值点个数
+              zPaneNum: 5, //Z轴的插值点个数
+              pointSize: 8, //绘制点的大小
+              shadowColor: 'rgba(0, 255, 0, 255)', //阴影处点颜色(绿色)
+              sunColor: 'rgba(255, 0, 0, 255)', //太阳下点颜色(红色)
+              intervalTime: 60 //动画中每次分析的时间间隔，单位分钟
+          });
+      }
+
+      //添加拾取事件
+      function addMouseClickEvent(){
+          if(handler!==null){
+              return;
+          }
+          handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+          handler.setInputAction(function (movement) {
+              let pickedFeature = viewer.scene.pick(movement.position);
+              //阴影分析绘制的差值点，是采用primitive的方式绘制的
+              if(pickedFeature && pickedFeature.primitive && pickedFeature.primitive.constructor.name === 'PointPrimitive' ){
+                  let id = pickedFeature.primitive.id;
+                  let position = pickedFeature.primitive.position;
+                  let index = pickedFeature.primitive.id.index;
+                  let information = pickedFeature.primitive.id.information; //这个分析点的信息
+                  let shadowRatio = pickedFeature.primitive.id.shadowRatio; //这个分析点的光照时间与总时间的比例
+                  let timeInSun = pickedFeature.primitive.id.timeInSun; //这个分析点光照的时间
+                  let timeInShadow = pickedFeature.primitive.id.timeInShadow;//这个分析点没有光照的时间
+                  //弹出来展示
+                  layer.msg(information);
+              }
+          }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+      }
+
+      //分析过程完成度百分比回调，小数点，1代表100%
+      function shadowAnalysisPercentCallback(percent){
+          let loadDom = document.getElementById("loadingDiv");
+          loadDom.style.display = 'block';
+          document.getElementById('loadingTip').innerHTML = '已完成：'+(percent*100).toFixed(0)+'%';
+          if(Number(percent) === 1){
+              loadDom.style.display = 'none';
+          }
+      }
+      //分析过程中计算阴影率的回调(光照时间与总时间的比率)
+      function shadowRatioCallback(shadowRatio){
+          console.log(shadowRatio);
+      }
+
+      //清除阴影分析
+      function removeShadowAnalysis(){
+          if(shadowAnalysis){
+              shadowAnalysis.remove();
+              shadowAnalysis = null;
+          }
+          // 也可使用以下函数，功能为移除绘制结果，并关闭深度检测
+          // shadowAnalysis.destroy();
+          // shadowAnalysis = null;
+      }
+
+      //添加一个模型，方便展示
+      function addModel(){
+          let url = 'http://192.168.82.89:8200/3DData/ModelCache/M3D//1.0/ZondyFaceModels/ZondyFaceModels.mcj';
+          viewer.scene.layers.appendM3DLayer(url, {
+              duration: 1
+          });
+      }
+
+  </script>
+</head>
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+<div class="layui-panel layui-panel-right" style="width: 172px;">
+  <div class="sample-button-panel">
+    <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="addDrawElement()">绘制阴影区</button>
+    <button type="button" class="layui-btn layui-btn-sm layui-btn-danger" onclick="removeShadowAnalysis()">清除</button>
+  </div>
+</div>
+<div class="loading-div" id="loadingDiv">
+  <div class="loading-tip" id="loadingTip">加载中...</div>
+</div>
+</body>
+</html>

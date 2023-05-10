@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta charset='utf-8'/>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>加载WMS图层</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer, options, layer;
+
+      //地图初始化函数
+      function init() {
+          //初始化球体
+          initViewer();
+          //加载WMS图层
+          addWMSLayer();
+          //飞到指定视角
+          flyTo();
+          //初始化示例UI
+          initUI();
+      }
+
+      //初始化球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer("mapgis-3d-viewer", {});
+          viewer.showPosition();
+      }
+
+      //加载WMS图层
+      function addWMSLayer() {
+          options = {
+              url: "http://192.168.82.89:6163/igs/rest/ogc/doc/北京市/WMSServer",
+              layers: "t0,t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,t11,t12,t13,t14,t15,t16,t17,t18,t19,t20,t21,t22,t23,t24,t25,t26,t27,t28,t29,t30,t31,t32,t33,t34,t35,t36,t37,t38,t39,t40,t41,t42,t43,t44,t45,t46,t47,t48,t49,t50,t51,t52,t53,t54,t55,t56,t57,t58,t59,t60,t61,t62,t63,t64,t65,t66,t67,t68,t69,t70,t71,t72,t73,t74,t75,t76,t77,t78,t79,t80,t81,t82",
+              parameters: {
+                  format: "image/png",
+                  transparent: true
+              }
+          };
+          //加载WMS地图
+          layer = viewer.scene.imageryLayers.addImageryProvider(new Cesium.WebMapServiceImageryProvider(options));
+      }
+
+      //飞到指定视角
+      function flyTo() {
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(116.348, 40.236, 300000),
+              duration: 2
+          });
+      }
+
+      //初始化示例UI
+      function initUI() {
+          layui.use(function () {
+              let $ = layui.jquery,
+                  form = layui.form;
+
+              //切换裁图方式
+              form.on('select(tilingScheme)', function (data) {
+                  //销毁地图
+                  viewer.scene.imageryLayers.remove(layer);
+                  //设置地图切片方式
+                  let tilingScheme = $("#tilingScheme").val();
+                  //经纬度方式
+                  if(tilingScheme === "c") {
+                      options.tilingScheme = new Cesium.GeographicTilingScheme({
+                          rectangle: Cesium.Rectangle.fromDegrees(-180, -90, 180, 90),
+                          ellipsoid: Cesium.Ellipsoid.WGS84,
+                          numberOfLevelZeroTilesX: 2,
+                          numberOfLevelZeroTilesY: 1
+                      })
+                  }else {
+                      //web墨卡托方式
+                      options.tilingScheme = new Cesium.WebMercatorTilingScheme({
+                          numberOfLevelZeroTilesX: 2,
+                          numberOfLevelZeroTilesY: 2
+                      });
+                  }
+                  //重新加载地图
+                  layer = viewer.scene.imageryLayers.addImageryProvider(new Cesium.WebMapServiceImageryProvider(options));
+              });
+          })
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+<div class="layui-panel layui-panel-right">
+  <form class="layui-form" action="">
+    <div class="layui-form-item sample-main-panel" style="border-bottom: none;">
+      <label class="layui-form-label">切片方式</label>
+      <div class="layui-input-block layui-input-block-select">
+        <select id="tilingScheme" name="tilingScheme" lay-filter="tilingScheme">
+          <option value="c">经纬度</option>
+          <option value="w">web墨卡托</option>
+        </select>
+      </div>
+    </div>
+  </form>
+</div>
+</body>
+
+</html>

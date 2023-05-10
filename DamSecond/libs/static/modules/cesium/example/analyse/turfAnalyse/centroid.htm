@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset='utf-8'/>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>中心点</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--turf.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/turf/turf.min.js"></script>
+  <!--geohash.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/geohash/geohash.js"></script>
+  <!--geojson.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/geojson/geojson.min.js"></script>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/analyse.css"/>
+  <script>
+  'use strict';
+  let viewer;
+  //geoJson数据
+  let points;
+  //原始数据
+  let originData = {
+    "took": 285,
+    "timed_out": false,
+    "_shards": {"total": 5, "successful": 5, "failed": 0},
+    "hits": {"total": 16189203, "max_score": 0.0, "hits": []},
+    "aggregations": {
+      "geohash": {
+        "buckets": [
+          {"key": "wx4g", "doc_count": 5865362},
+          {"key": "wx4e", "doc_count": 4889426},
+          {"key": "wx4d", "doc_count": 2834451},
+          {"key": "wx4f", "doc_count": 2075264},
+          {"key": "wx4u", "doc_count": 174002},
+          {"key": "wx49", "doc_count": 121119},
+          {"key": "wx4s", "doc_count": 106625},
+          {"key": "wx4c", "doc_count": 45276},
+          {"key": "wx43", "doc_count": 42310},
+          {"key": "wx55", "doc_count": 10678},
+          {"key": "wx5h", "doc_count": 8540},
+          {"key": "wx54", "doc_count": 7740},
+          {"key": "wx46", "doc_count": 4249},
+          {"key": "wx5k", "doc_count": 3163},
+          {"key": "wx51", "doc_count": 681},
+          {"key": "wx47", "doc_count": 317}
+        ]
+      }
+    }
+  };
+
+  //初始化
+  function init() {
+    //地图初始化
+    initMap();
+    //加载原始的点数据
+    loadOriginData();
+  }
+
+  //地图初始化
+  function initMap() {
+    //构造三维视图类（视图容器div的id，三维视图设置参数）
+    viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+    //加载天地图
+    addTDT();
+    //设置相机位置
+    setCamera();
+  }
+
+  //加载天地图
+  function addTDT() {
+    let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          };
+          //添加卫星影像
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+  }
+
+  //设置相机位置
+  function setCamera() {
+    //相机的最终位置
+    let destination = Cesium.Cartesian3.fromDegrees(114.289398, 30.59418345, 500000.0);
+    viewer.scene.camera.setView({
+      destination: destination
+    });
+  }
+
+  //准备数据
+  function loadOriginData() {
+    let columnarPoints = [];
+    originData.aggregations.geohash.buckets.forEach(function (bucket) {
+      //解析geoHash，得到多个数据
+      let coordinates = decodeGeoHash(bucket.key);
+      //数值
+      let countNumber = bucket.doc_count;
+      //中心点
+      let point = {
+        pointKey: [
+          //[0] min [1]max [2] 中心点
+          coordinates.longitude[2], coordinates.latitude[2]
+        ],
+        count: countNumber
+      };
+      columnarPoints.push(point);
+    });
+    //解析成geoJson数据
+    points = GeoJSON.parse(columnarPoints, {
+      'Point': 'pointKey'
+    });
+    //添加所有的点
+    let originDataSource = viewer.dataSources.add(Cesium.GeoJsonDataSource.load(points, {
+      //marker大小
+      markerSize: 50,
+      //marker颜色
+      markerColor: Cesium.Color.SKYBLUE.withAlpha(0.7)
+    }));
+    //视角飞行
+    viewer.flyTo(originDataSource)
+  }
+
+  //中心点分析
+  function centroid() {
+    //turf.centroid分析
+    let geoJson = turf.centroid(points);
+    //添加分析结果
+    viewer.dataSources.add(Cesium.GeoJsonDataSource.load(geoJson, {
+      //marker大小
+      markerSize: 50,
+      //marker颜色
+      markerColor: Cesium.Color.RED.withAlpha(0.7)
+    }));
+  }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+<div class="layui-panel layui-panel-right" style="width: 118px;">
+  <form class="layui-form" action="">
+    <div class="sample-button-panel">
+      <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="centroid()">中心点分析</button>
+    </div>
+  </form>
+</div>
+</body>
+</html>

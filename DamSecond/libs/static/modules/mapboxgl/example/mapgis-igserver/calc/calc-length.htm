@@ -1,0 +1,219 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>计算折线长度</title>
+    <script include="jquery" src="./static/libs/include-lib-local.js"></script>
+    <script include="mapboxgl,draw,transform" src="./static/libs/include-mapboxgl-local.js"></script>
+    <link href="./static/modules/mapboxgl/example/style.css" rel="stylesheet" type="text/css" />
+    <script type="text/javascript">
+        //使用严格模式
+        "use strict";
+        //定义地图文档图层和地图
+        var mapDocLayer, map;
+        var markerlatLng;
+        var draw;
+        var popup;
+        var { protocol, ip, port } = window.webclient;
+
+        /**地图初始化
+         */
+        function init() {
+            //地图容器
+            map = new mapboxgl.Map({
+                container: 'map',
+                crs: 'EPSG:4326',
+                minZoom: 3,
+                zoom: 11,
+                center: [116.37, 39.95]
+            });
+
+            //瓦片地图
+            new mapboxgl.Zondy.Map.MapTileLayer('北京市Tile', {
+                ip: `${ip}`,
+                port: `${port}`,
+                zoomOffset: -1
+            }).addToMap(map);
+
+            var navigationControl = new mapboxgl.NavigationControl();
+            var scaleControl = new mapboxgl.ScaleControl();
+            draw = new MapboxDraw({
+                displayControlsDefault: false,
+                controls: {
+                    line_string: true,
+                    polygon: false,
+                    trash: true
+                },
+                styles:[
+                    {
+                        'id': 'gl-draw-line-inactive',
+                        'type': 'line',
+                        'filter': ['all',
+                            ['==', 'active', 'false'],
+                            ['==', '$type', 'LineString'],
+                            ['!=', 'mode', 'static']
+                        ],
+                        'layout': {
+                            'line-cap': 'round',
+                            'line-join': 'round'
+                        },
+                        'paint': {
+                            'line-color': '#3bb2d0',
+                            'line-width': 2
+                        }
+                    },
+                    {
+                        'id': 'gl-draw-line-active',
+                        'type': 'line',
+                        'filter': ['all',
+                            ['==', '$type', 'LineString'],
+                            ['==', 'active', 'true']
+                        ],
+                        'layout': {
+                            'line-cap': 'round',
+                            'line-join': 'round'
+                        },
+                        'paint': {
+                            'line-color': '#fb3b3b',
+                            'line-dasharray': [0.2, 2],
+                            'line-width': 2
+                        }
+                    },
+                    {
+                        'id': 'gl-draw-polygon-and-line-vertex-stroke-inactive',
+                        'type': 'circle',
+                        'filter': ['all',
+                            ['==', 'meta', 'vertex'],
+                            ['==', '$type', 'Point'],
+                            ['!=', 'mode', 'static']
+                        ],
+                        'paint': {
+                            'circle-radius': 5,
+                            'circle-color': '#fff'
+                        }
+                    },
+                    {
+                        'id': 'gl-draw-polygon-and-line-vertex-inactive',
+                        'type': 'circle',
+                        'filter': ['all',
+                            ['==', 'meta', 'vertex'],
+                            ['==', '$type', 'Point'],
+                            ['!=', 'mode', 'static']
+                        ],
+                        'paint': {
+                            'circle-radius': 3,
+                            'circle-color': '#fb3b3b'
+                        }
+                    },
+                ],
+            });
+
+            map.addControl(navigationControl, 'top-left');//导航条
+            map.addControl(scaleControl);
+            map.addControl(draw, "top-left");//绘制工具
+            //注册鼠标移动事件
+            map.on('mousemove', function (e) {
+                document.getElementById('mouse-position').innerHTML = "经度：" + e.lngLat.lng.toFixed(2) + "，纬度：" + e.lngLat.lat.toFixed(2);
+            });
+
+            map.on('draw.create', function (e) {
+                var lonlats = e.features[e.features.length - 1].geometry.coordinates;
+                var dots = [];
+                for (var i = 0; i < lonlats.length; i++) {
+                    dots.push(new Zondy.Object.Point2D(lonlats[i][0], lonlats[i][1]))
+                }
+                markerlatLng = lonlats[lonlats.length - 1];
+                CalPolyLineLength(dots)
+            });
+
+            popup = new mapboxgl.Popup({ closeOnClick: false });
+            popup.on("close", function () {
+                draw.deleteAll();
+            });
+            map.on("draw.delete", deleteMeasure);
+        }
+
+        /**
+         * 获取多边形重心
+         * @param latlngs
+         * @returns {{x: number, y: number}}
+         */
+        function getCenterOfGravityPoint(latlngs) {
+            let area = 0.0;// 多边形面积
+            let Gx = 0.0;
+            let Gy = 0.0;// 重心的x、y
+            for (let i = 1; i <= latlngs.length; i++) {
+                const iLat = latlngs[i % latlngs.length][1];
+                const iLng = latlngs[i % latlngs.length][0];
+                const nextLat = latlngs[i - 1][1];
+                const nextLng = latlngs[i - 1][0];
+                const temp = (iLat * nextLng - iLng * nextLat) / 2.0;
+                area += temp;
+                Gy += temp * (iLat + nextLat) / 3.0;
+                Gx += temp * (iLng + nextLng) / 3.0
+            }
+            return [Gx / area, Gy / area];
+        }
+
+        /**计算折线长度*/
+        function CalPolyLineLength(dots) {
+            //初始化长度测量服务
+            var calLength = new Zondy.Service.CalPolyLineLength(dots, {
+                //IP地址
+                ip: `${ip}`,
+                //端口号
+                port: `${port}`
+            });
+            //建议普通用户采用此类直接获取MapGIS GDB已经提供的空间参考系
+            var gdbInfo = new Zondy.Object.CGDBInfo({
+                //数据库名称
+                GDBName: "OpenLayerVecterMap",
+                //数据源名称
+                ServerName: "MapGISLocalPlus",
+                //除MapGISLocal数据源，其它的都设置
+                Password: "",
+                //除MapGISLocal数据源，其它的都设置
+                User: ""
+            });
+            //用于进行SRSID投影的参数类
+            var projBySRSID = new Zondy.Service.CProjectBySRSID(601, gdbInfo);
+            //执行长度测量服务，measureCallBack为测量回调函数
+            calLength.execute(projBySRSID, measureCallBack);
+        }
+
+        /**测量回调函数
+         *  @param {json对象} data 获取结果对象
+         */
+        function measureCallBack(data) {
+            if (data && data.succeed) {
+                var length = data.value;
+                var output;
+                if (length > 100) {
+                    output = (Math.round(length / 1000 * 100) / 100) + "" + "km";
+                } else {
+                    output = (Math.round(length * 100) / 100) + "" + "m";
+                }
+                popup.setLngLat(markerlatLng).setHTML("线段长度：" + output).addTo(map);
+            }
+        }
+
+        /** 删除绘制的要素*/
+        function deleteMeasure() {
+            draw.deleteAll();
+            popup.remove();
+        }
+    </script>
+</head>
+
+<body onload="init()">
+    <div id="resultShow">
+    </div>
+    <div id="map" style="width: 100%; height:700px;">
+
+        <div id="mouse-position">
+        </div>
+    </div>
+</body>
+
+</html>

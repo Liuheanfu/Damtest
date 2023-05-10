@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <meta charset='utf-8'/>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>创建三维场景</title>
+  <!--引入第三方的jquery脚本库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/tool.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer;
+      //绕点旋转工具
+      let rotatePointTool;
+
+      //地图初始化函数
+      function init() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          //添加中地大楼模型
+          viewer.scene.layers.appendM3DLayer("http://192.168.82.89:8200/3DData/ModelCache/M3D//1.0/ZondyFaceModels/ZondyFaceModels.mcj", {});
+          //显示鼠标位置
+          viewer.showPosition();
+          //添加天地图底图
+          addTdtImage();
+          //初始化绕点旋转工具
+          initRotateTool();
+      }
+
+      //初始化绕点旋转工具
+      function initRotateTool() {
+          // 定义绕点旋转对象
+          rotatePointTool = new Cesium.AnimationTool(viewer, {
+              //类型指定为point
+              toolType: 'point',
+              //绕Z轴旋转角度，弧度值，初始化时有效。
+              heading: 0,
+              //绕Y轴旋转，弧度值，可通过纬度值转化，可实时更改。
+              pitch: 0,
+              //旋转速度，度/秒。注意speed属性只有在isLoop为true时生效
+              speed: 10,
+              //是否循环动画，true：一直循环，false：到结束时间就停止动画
+              isLoop: true,
+              //旋转中心点，设置为球心
+              positions: new Cesium.Cartesian3(0, 0, 0),
+              //也可指定特定点
+              // positions: Cesium.Cartesian3.fromDegrees(108.96044700955785, 34.21796237686321, 60.99772929683282),
+              //绕点旋转时，相机定位点的平移距离（沿着相机视角的相反方向）
+              distance: 40000000,
+              //绕点旋转时，移动鼠标，停止旋转
+              moveToStop: true,
+              //绕点旋转动画完成事件
+              complete: function () {
+                  alert('完毕');
+              },
+              //绕点旋转时，每一帧的回调函数，暂停同时暂停返回结果
+              onPositionCallback: function (result) {
+                  // console.log('heading:' + result.heading + '，pitch：' + result.pitch);
+              },
+          });
+      }
+
+      //开始旋转
+      function start() {
+          //更新旋转中心点
+          let longitude = document.getElementById('longitude').value;
+          let latitude = document.getElementById('latitude').value;
+          let height = document.getElementById('height').value;
+          let positions = Cesium.Cartesian3.fromDegrees(Number(longitude), Number(latitude), Number(height));
+          rotatePointTool.positions = positions;
+
+          //更新旋转参数
+          let pitch = document.getElementById('pitch').value;
+          let distance = document.getElementById('distance').value;
+          let speed = document.getElementById('speed').value;
+          rotatePointTool.pitch = pitch || rotatePointTool.pitch;
+          rotatePointTool.distance = distance || rotatePointTool.distance;
+          rotatePointTool.speed = speed || rotatePointTool.speed;
+
+          //开始旋转
+          rotatePointTool.start();
+      }
+
+      //暂停旋转
+      function pause() {
+          rotatePointTool.pause = !rotatePointTool.pause;
+      }
+
+      //绕球心旋转
+      function rotateCenter() {
+          //旋转中心点设置为球心
+          rotatePointTool.positions = new Cesium.Cartesian3(0, 0, 0);
+          //设置旋转距离
+          rotatePointTool.distance = 20000000;
+
+          rotatePointTool.start();
+      }
+
+      //销毁旋转工具
+      function destroy() {
+          rotatePointTool.stop();
+      }
+
+      //添加天地图底图
+      function addTdtImage() {
+          let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+<div class="layui-panel layui-panel-right" style="width: 868px">
+  <div class="sample-main-panel">
+    <span style="padding-right: 28px">中心点 - </span>
+    <span class="sample-title">经度：</span>
+    <input class="sample-input" type="number" id="longitude" value="114.4015">
+    <span class="sample-title">纬度：</span>
+    <input class="sample-input" type="number" id="latitude" value="30.4665">
+    <span class="sample-title">高度：</span>
+    <input class="sample-input" type="number" id="height" value="60">
+  </div>
+  <div class="sample-main-panel">
+    <span>旋转参数 - </span>
+    <span class="sample-title">俯仰角：</span>
+    <input class="sample-input" type="number" id="pitch" value="-0.3">
+    <span class="sample-title">距离：</span>
+    <input class="sample-input" type="number" id="distance" value="1000">
+    <span class="sample-title">速度：</span>
+    <input class="sample-input" type="number" id="speed" value="10">
+  </div>
+  <div class="sample-button-panel">
+    <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="start()">开始旋转</button>
+    <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="pause()">暂停旋转</button>
+    <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="rotateCenter()">绕球心旋转
+    </button>
+    <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="destroy()">销毁工具</button>
+  </div>
+</div>
+</body>
+
+</html>

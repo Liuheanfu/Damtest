@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no'/>
+  <title>挖填方分析</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/analyse.css"/>
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer = null;
+      //绘制多边形的工具
+      let drawElement = null;
+      //定义填挖方计算类
+      let cutFill;
+      //区域的集合
+      let polygon = [];
+      //挖的高度
+      let height = 10;
+      //填方entities
+      let entities = null;
+      //挖方primitives
+      let primitives = null;
+
+      //地图初始化函数
+      function init() {
+          //创建三维球体
+          initViewer();
+
+          //创建填挖方计算类
+          cutFill = fillCut();
+
+          //加载天地图以及dem
+          addTdtImage();
+          addDem();
+      }
+
+      //创建三维球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          //显示坐标高程显示
+          viewer.showPosition();
+          //打开深度检测
+          viewer.scene.globe.depthTestAgainstTerrain = true;
+          if (Cesium.FeatureDetection.supportsImageRenderingPixelated()) {
+              //判断是否支持图像渲染像素化处理
+              viewer.resolutionScale = window.devicePixelRatio;
+          }
+          //开启抗锯齿
+          viewer.scene.fxaa = true;
+          viewer.scene.postProcessStages.fxaa.enabled = true;
+      }
+
+      //添加天地图影像数据
+      function addTdtImage() {
+                   let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      //加载3D景观模型
+      function addDem() {
+          //模型地址
+          let url = 'http://192.168.82.89:8089/igs/rest/g3d/Scene:TwTerrain';
+          viewer.scene.layers.appendSceneLayer(url, {requestVertexNormals: true, autoReset: false});
+          flyToTerrain();
+      }
+
+      function flyToTerrain(){
+          let destination = Cesium.Cartesian3.fromDegrees(121.0076, 23.3814, 9000.0);
+          let orientation = {
+              pitch: Cesium.Math.toRadians(-35.0),
+          };
+          viewer.camera.flyTo({
+              destination: destination,
+              orientation: orientation
+          });
+      }
+
+      //创建填挖方计算类
+      function fillCut() {
+          return new Cesium.CutFillAnalysis(viewer, {
+              //数据类型,0.0：地形，1.0：模型，2.0：通用
+              dataType: 2.0,
+              //分析结果回调函数
+              callBack: callFillCut
+          });
+      }
+
+      //绘制多边形
+      function addDrawElement() {
+          //绘制前先清除
+          clearCube();
+          //绘制工具
+          let drawElement = new Cesium.DrawElement(viewer);
+          //绘制区域
+          drawElement.startDrawingPolygon({
+              callback: function (result) {
+                  //得到添加点坐标的集合
+                  polygon = result.positions;
+                  //x坐标方向采样点的个数
+                  cutFill.xPaneNum = 10;
+                  //y坐标方向采样点的个数
+                  cutFill.yPaneNum = 10;
+                  //平整高程
+                  cutFill.height = height;
+                  //点坐标
+                  cutFill._pointsPolygon = polygon;
+                  //获取最大最小经纬度的值
+                  let minMax = cutFill.getMinAndMaxCartesian();
+                  //开始计算
+                  cutFill.start(minMax);
+                  //绘制完清除工具
+                  if (drawElement) {
+                      drawElement.stopDrawing();
+                  }
+              }
+          });
+      }
+
+      //挖填方分析
+      function callFillCut(result) {
+          //表面积
+          let inputsurfaceArea = document.getElementById('surfaceArea');
+          //挖方体积
+          let inputcutVolume = document.getElementById('cutVolume');
+          //填方体积
+          let inputfillVolume = document.getElementById('fillVolume');
+          //面板input框赋值
+          inputsurfaceArea.value = result.surfaceArea;
+          inputcutVolume.value = result.cutVolume;
+          inputfillVolume.value = result.fillVolume;
+          // 绘制填方结果
+          entities = viewer.entities.add({
+              polygon: {
+                  hierarchy: {
+                      positions: polygon
+                  },
+                  //高度
+                  height: height,
+                  //开始填方的高度
+                  extrudedHeight: result.minHeight,
+                  //颜色
+                  material: Cesium.Color.ORANGE
+              }
+          });
+          // 绘制挖方结果
+          let polygonGeometry = new Cesium.PolygonGeometry({
+              polygonHierarchy: new Cesium.PolygonHierarchy(polygon)
+          });
+          let polygonInstance = new Cesium.GeometryInstance({
+              //几何实例
+              geometry: polygonGeometry,
+              id: 'polygon',
+              attributes: {
+                  //颜色
+                  color: new Cesium.ColorGeometryInstanceAttribute(0.0, 0.0, 1.0, 0.8)
+              }
+          });
+          //渲染挖方结果
+          primitives = viewer.scene.primitives.add(
+              new Cesium.GroundPrimitive({
+                  geometryInstances: polygonInstance
+              })
+          );
+
+      }
+
+      //清除分析结果，去掉挖方和填方
+      function clearCube() {
+          if (entities !== null) {
+              entities.entityCollection.removeAll();
+          }
+          if (primitives !== null) {
+              primitives.destroy();
+          }
+      }
+
+  </script>
+</head>
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+<div class="layui-panel layui-panel-right">
+  <form class="layui-form" action="">
+    <div class="sample-main-panel" style="height: 216px;">
+      <div class="layui-form-item">
+        <label class="layui-form-label">填方体积</label>
+        <div class="layui-input-block">
+          <input type="number" disabled class="layui-input" id="fillVolume" placeholder="立方米">
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <label class="layui-form-label">挖方体积</label>
+        <div class="layui-input-block">
+          <input type="number" disabled class="layui-input" id="cutVolume" placeholder="立方米">
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <label class="layui-form-label">表面积</label>
+        <div class="layui-input-block">
+          <input type="number" disabled class="layui-input" id="surfaceArea" placeholder="立方米">
+        </div>
+      </div>
+      <div class="layui-form-item">
+        <label class="layui-form-label">说明：</label>
+        <div class="layui-input-block">
+          <div class="tips">橙色为从最低点填平到指定高度的区域体积，蓝色为从最高点挖平到指定高度的区域体积。
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="sample-button-panel">
+      <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="addDrawElement()">
+        绘制分析区
+      </button>
+      <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="clearCube()">清除</button>
+    </div>
+  </form>
+</div>
+</body>
+</html>

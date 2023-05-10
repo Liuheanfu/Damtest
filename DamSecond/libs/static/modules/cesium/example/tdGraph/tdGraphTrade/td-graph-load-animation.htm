@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>三维标绘</title>
+  <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.2.0/css/all.min.css" rel="stylesheet"/>
+  <!-- jquery -->
+  <script src="http://localhost:8080/static/libs/cdn/jquery/jquery-1.12.4.min.js"></script>
+  <!-- cesium -->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!-- plot -->
+  <script src="http://localhost:8080/static/libs/cdn/webclient-plot/webclient-plot.min.js"></script>
+  <!-- panel -->
+  <script src="http://localhost:8080/static/libs/cdn/webclient-plot-plugins/PlotPanel/index.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/webclient-plot-plugins/PlotPanel/index.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/plot/plot3d-layer-use.css"/>
+  <script>
+      "use strict";
+
+      //定义三维视图的主要类
+      let viewer, options, plotLayer, plotLayer3DGroup, plotEditor, currentPlot, timeline, manager;
+      // 获取Zondy类
+      const Zondy = window.Zondy;
+      // 获取标绘类
+      const Plot = Zondy.Plot;
+      const {
+          // 标绘库路径
+          PlotUtilBase,
+          // 三维图层
+          PlotLayer3D,
+          // 三维图层组
+          PlotLayer3DGroup,
+          // 符号管理器
+          SymbolManager,
+          // 绘制工具
+          DrawTool,
+          // 注册类
+          PlotRegister,
+          // 时间轴
+          TimeLine,
+      } = Plot;
+
+      //地图初始化函数
+      function init() {
+          //初始化三维球体
+          initViewer();
+          //添加天地图
+          addTDT();
+          //视图跳转
+          flyTo();
+          //初始化标绘符号管理器
+          initPlotManager(function () {
+              //确保符号获取完毕后，初始化标绘图层
+              initPlotLayer();
+              //初始化UI
+              initUI();
+          })
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          //显示鼠标位置
+          viewer.showPosition();
+          //抗锯齿处理
+          viewer.scene.fxaa = true;
+          viewer.scene.postProcessStages.fxaa.enabled = true;
+      }
+
+      //加载天地图底图
+      function addTDT() {
+          let options = {
+              //天地图URL，开发token （请到天地图官网申请自己的开发token，自带token仅做功能验证随时可能失效）
+              url: "http://t0.tianditu.gov.cn/vec_w/wmts?tk=9c157e9585486c02edf817d2ecbc7752",
+              //图层名称，vec：矢量底图、img：卫星影像底图、cva: 矢量注记图层（中文）、eva: 矢量注记图层（英文）、cia: 注记图层（中文）、eia: 注记图层（英文）、ter: 地形晕渲底图、cta: 注记（中文）、ibo: 全球国界
+              layer: "vec",
+              //瓦片样式
+              style: "default",
+              //比例尺
+              tileMatrixSetID: "w",
+              //请求格式
+              format: "tiles"
+          }
+          viewer.imageryLayers.addImageryProvider(new Cesium.WebMapTileServiceImageryProvider(options));
+      }
+
+      //视图跳转
+      function flyTo() {
+          const result = {
+              heading: 0.0540480297599903,
+              pitch: -29.31964649959001,
+              roll: 0.0003774539801004507,
+              x: 117.68748899387914,
+              y: 27.872636253750766,
+              z: 406964.63689109177,
+          };
+          viewer.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(
+                  result.x,
+                  result.y,
+                  result.z
+              ),
+              orientation: {
+                  heading: Cesium.Math.toRadians(result.heading),
+                  pitch: Cesium.Math.toRadians(result.pitch),
+                  roll: Cesium.Math.toRadians(result.roll),
+              },
+          });
+      }
+
+      /**
+       * 初始化标绘符号管理器
+       * @param callback 回调函数
+       * */
+      function initPlotManager(callback) {
+          // 符号库路径
+          const symbolUrl = `http://localhost:8080/static/libs/cdn/webclient-plot/symbols.json`;
+          const symbolOptions = {
+              // 符号库字体路径
+              fontURL: `http://localhost:8080/static/libs/cdn/webclient-plot/`,
+              // 静态资源路径
+              baseUrl: `http://localhost:8080/static/libs/cdn/webclient-plot/assets/`,
+          };
+
+          // 创建符号管理器
+          manager = new SymbolManager(symbolUrl, symbolOptions);
+          // 请求获取符号库
+          manager.getSymbols().then(() => {
+              //获取符号库后执行回调
+              callback();
+          });
+      }
+
+      /**
+       * 初始化标绘图层
+       * */
+      function initPlotLayer() {
+          // 创建图层组
+          plotLayer3DGroup = new PlotLayer3DGroup(viewer);
+          // 创建三维图层
+          plotLayer = new PlotLayer3D(Cesium, viewer, {});
+          // 添加图层
+          plotLayer3DGroup.addLayer(plotLayer);
+          // 加载标绘图层
+          $.getJSON(`http://localhost:8080/static/libs/cdn/webclient-plot/test.json`, (res) => {
+                  plotLayer.fromJSON(res);
+              }
+          );
+          // 创建时间轴
+          $.getJSON(`http://localhost:8080/static/libs/cdn/webclient-plot/animation.json`, (t) => {
+                  timeline = new TimeLine(plotLayer3DGroup, {});
+                  timeline.fromJSON(t);
+              }
+          );
+          // 选取对象
+          plotLayer.editable = true;
+          plotLayer.pickPlot = (plot) => {
+              currentPlot = plot;
+          };
+      }
+
+      //初始化UI
+      function initUI() {
+          const panel = new window.webclientPlot.PlotPanel("plot-show-table", {
+              titleText: "态势图管理",
+              panelWidth: 320,
+          });
+          const contentBody = panel.getBody();
+          contentBody.style.display = "flex";
+          contentBody.style.flexDirection = "column";
+
+          const list3 = document.createElement("div");
+          const input3 = document.createElement("input");
+          const span3 = document.createElement("span");
+          list3.setAttribute("class", "listdom");
+          input3.setAttribute("class", "input");
+          input3.setAttribute("type", "file");
+          input3.onchange = (e) => {
+              const file = e.target.files[0];
+              var reader = new FileReader();
+              reader.readAsText(file, "utf8");
+              reader.onload = function () {
+                  // 清空时间轴动画
+                  timeline.clear();
+                  // 加载时间轴动画
+                  timeline.fromJSON(JSON.parse(this.result));
+              };
+          };
+          span3.innerText = "上传态势图数据";
+          span3.setAttribute("class", "span");
+          span3.style.position = "absolute";
+          list3.appendChild(span3);
+          list3.appendChild(input3);
+          contentBody.appendChild(list3);
+
+          const list2 = document.createElement("div");
+          const btn2 = document.createElement("button");
+          list2.setAttribute("class", "listdom");
+          btn2.setAttribute("class", "btn");
+          btn2.innerText = `下载态势图数据`;
+          btn2.onclick = () => {
+              const a = document.createElement("a");
+              const datastr =
+                  "data:text/json;charset=utf-8," +
+                  encodeURIComponent(JSON.stringify(timeline.toJSON()));
+              a.href = datastr;
+              a.setAttribute("download", "animation.json");
+              a.style.display = "none";
+              // 下载
+              a.click();
+          };
+          list2.appendChild(btn2);
+          contentBody.appendChild(list2);
+      }
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+  <div id="content">
+    <div id="plot-show-table"></div>
+  </div>
+</div>
+</body>
+</html>

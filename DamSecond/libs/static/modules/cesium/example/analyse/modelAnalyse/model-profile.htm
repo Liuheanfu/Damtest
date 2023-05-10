@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>地质体剖面工具</title>
+  <!--引入Cesium.js库-->
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <!--引入Cesium.js库相关css样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css" />
+  <!--示例中面板、按钮等，第三方layui的js库与css样式-->
+  <script src="http://localhost:8080/static/libs/cdn/layui/layui.js"></script>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/layui/css/layui.css" />
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css" />
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/tool.css" />
+  <script>
+      'use strict';
+      //定义三维视图的主要类
+      let viewer = null;
+      //绘制工具
+      let drawElement = null;
+      // m3d图层
+      let m3dLyr = null;
+      //地图初始化函数
+      function init() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer('mapgis-3d-viewer', {});
+          //为了更好的展示，去掉地球
+          viewer.scene.globe.show = false;
+          //三维试图类构造完毕，添加模型
+          addModel();
+      }
+
+      // 添加剖面
+      function addSection() {
+          //先移除上次的切面
+          removeSection();
+          // 创建交互绘制工具
+          drawElement = new Cesium.DrawElement(viewer);
+          drawElement.startDrawingPolyline({
+              callback: function (result) {
+                  var positions = result.positions;
+                  for (var i = 0; i < positions.length - 1; ++i) {
+                      var geom = new Cesium.SectionPlaneGeometry({
+                          positions: [positions[i], positions[i + 1]],
+                          topHeight: 100,
+                          bottomHeight: 1200,
+                      });
+                      // 设置只显示剖面,可以配合CuttingTool工具同时显示模型和剖面实现封边效果
+                      m3dLyr.sectionOnly(true);
+                      // 向m3d图层设置剖面几何
+                      m3dLyr.addSectionGeometry({ geometry: geom });
+                  }
+
+                  drawElement.stopDrawing();
+              }
+          });
+      }
+
+      // 移除剖面
+      function removeSection() {
+          // 移除剖面几何
+          if (Cesium.defined(m3dLyr)) {
+              m3dLyr.removeAllSectionGeometry();
+          }
+
+          // 停止绘制工具
+          if (Cesium.defined(drawElement)) {
+              drawElement.stopDrawing();
+              drawElement = undefined;
+          }
+
+          // 禁止点选
+          viewer.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_CLICK);
+      }
+
+      // 监听鼠标点击事件,进行模型拾取高亮
+      var highlightColor = new Cesium.Color(1.0, 1.0, 0.0, 0.6);
+      var leftClickHandler = function onLeftClick(movement) {
+          var oid = viewer.scene.pickOid(movement.position);
+          m3dLyr.pickedOid = oid;
+          m3dLyr.pickedColor = highlightColor;
+      }
+
+      // 开启点选
+      function enablePick() {
+          viewer.screenSpaceEventHandler.setInputAction(leftClickHandler, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+      }
+
+      // 添加模型数据
+      function addModel() {
+          let url = 'http://192.168.82.89:8089/igs/rest/services/M3Dv2/地质体封边模型/M3dServer';
+          viewer.scene.layers.appendM3DLayer(url, {
+              duration: 2,
+              // 如果后续会addSectionGeometry方法给m3d图层设置剖面设置为true,在m3d加载时统计oid等信息支持剖面的拾取高亮
+              hasSectionGeometry: true,
+              autoReset: true,
+              loaded: function (layer) {
+                  layer.maximumScreenSpaceError = 16;
+                  m3dLyr = layer;
+              }
+          });
+      }
+
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer">
+</div>
+<div class="layui-panel layui-panel-right" style="width: 300px;">
+  <div class="sample-button-panel">
+    <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="addSection()">添加剖面</button>
+    <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" onclick="enablePick()">开启点选</button>
+    <button type="button" class="layui-btn layui-btn-sm layui-btn-danger"
+            onclick="removeSection()">移除剖面</button>
+  </div>
+</div>
+<style>
+</style>
+</body>
+
+</html>

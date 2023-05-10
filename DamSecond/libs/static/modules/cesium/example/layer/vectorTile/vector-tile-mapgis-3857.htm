@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <script src="http://localhost:8080/static/libs/cdn/cesium/Cesium.js"></script>
+  <script src="http://localhost:8080/static/libs/cdn/webclient-cesium-plugin/webclient-cesium-plugin.js"></script>
+  <!--cesium样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/Widgets/widgets.css"/>
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/cdn/cesium/MapGIS/css/mapgis.css"/>
+  <!--示例公共样式-->
+  <link rel="stylesheet" href="http://localhost:8080/static/libs/css/style.css"/>
+  <script>
+      "use strict";
+      //定义三维视图的主要类
+      let viewer,vectorTileLayer;
+
+      //地图初始化函数
+      function init() {
+          //初始化三维球体
+          initViewer();
+          //加载天地图
+          addTDT();
+          // 添加GeoJSON数据;
+          addVectorTileLayer();
+      }
+
+      //初始化三维球体
+      function initViewer() {
+          //构造三维视图类（视图容器div的id，三维视图设置参数）
+          viewer = new Cesium.Viewer("mapgis-3d-viewer", {});
+      }
+
+      //加载基础地图
+      function addTDT() {
+          // 蓝色背景
+          let blueImage = new Cesium.UrlTemplateImageryProvider({
+              url: "https://map.geoq.cn/arcgis/rest/services/ChinaOnlineStreetPurplishBlue/MapServer/tile/{z}/{y}/{x}",
+              tilingScheme: new Cesium.WebMercatorTilingScheme(),
+              maximumLevel: 18,
+          });
+          viewer.imageryLayers.addImageryProvider(blueImage);
+      }
+
+      // 添加GeoJSON数据;
+      function addVectorTileLayer() {
+          //构造矢量瓦片图层对象
+          vectorTileLayer = new CesiumZondy.Overlayer.VectorTileLayer(
+              //视图
+              viewer,
+              {
+                  //样式json文件路径
+                  styleUrl: `http://192.168.82.89:8089/igs/rest/mrcs/vtiles/styles/中国行政区_style.json`,
+                  //第三方需要的token
+                  token: '',
+                  //是否可见
+                  show: true,
+                  callback: handleLayerAdd
+              }
+          );
+      }
+      //添加矢量瓦片的回调函数
+      function handleLayerAdd(payload) {
+          let { imageryLayer } = payload;
+          window.setTimeout(() => {
+              imageryLayer.alpha = 0.5;
+          }, 500);
+      }
+      
+  </script>
+</head>
+
+<body onload="init()">
+<div id="mapgis-3d-viewer"></div>
+</body>
+</html>
